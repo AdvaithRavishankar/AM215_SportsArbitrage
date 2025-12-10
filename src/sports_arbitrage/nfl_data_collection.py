@@ -126,6 +126,26 @@ def aggregate_pbp_to_game_stats(pbp_df: pd.DataFrame) -> pd.DataFrame:
     """
     print("Aggregating play-by-play data to game-level statistics...")
 
+    # Helper function to safely sum a column
+    def safe_sum(df, col):
+        if col not in df.columns:
+            return 0
+        try:
+            # Convert to numeric, coercing errors to NaN, then sum (NaN values are ignored)
+            return pd.to_numeric(df[col], errors='coerce').sum()
+        except:
+            return 0
+
+    # Helper function to safely calculate mean
+    def safe_mean(df, col):
+        if col not in df.columns or len(df) == 0:
+            return 0
+        try:
+            # Convert to numeric, coercing errors to NaN, then calculate mean
+            return pd.to_numeric(df[col], errors='coerce').mean()
+        except:
+            return 0
+
     # Filter to only plays that count (remove timeouts, kickoffs, etc.)
     pbp_df = pbp_df[pbp_df['play_type'].isin([
         'pass', 'run', 'punt', 'field_goal', 'extra_point'
@@ -154,58 +174,62 @@ def aggregate_pbp_to_game_stats(pbp_df: pd.DataFrame) -> pd.DataFrame:
         stats['home_total_plays'] = len(home_off_plays)
         stats['home_pass_attempts'] = len(home_off_plays[home_off_plays['play_type'] == 'pass'])
         stats['home_rush_attempts'] = len(home_off_plays[home_off_plays['play_type'] == 'run'])
-        stats['home_total_yards'] = home_off_plays['yards_gained'].sum()
-        stats['home_yards_per_play'] = home_off_plays['yards_gained'].mean() if len(home_off_plays) > 0 else 0
-        stats['home_turnovers'] = home_off_plays['turnover'].sum()
-        stats['home_first_downs'] = home_off_plays['first_down'].sum()
-        stats['home_third_down_conv'] = home_off_plays['third_down_converted'].sum()
-        stats['home_third_down_att'] = home_off_plays['third_down_failed'].sum() + home_off_plays['third_down_converted'].sum()
-        stats['home_fourth_down_conv'] = home_off_plays['fourth_down_converted'].sum()
-        stats['home_fourth_down_att'] = home_off_plays['fourth_down_failed'].sum() + home_off_plays['fourth_down_converted'].sum()
+        stats['home_total_yards'] = safe_sum(home_off_plays, 'yards_gained')
+        stats['home_yards_per_play'] = safe_mean(home_off_plays, 'yards_gained')
+        stats['home_turnovers'] = safe_sum(home_off_plays, 'turnover')
+        stats['home_first_downs'] = safe_sum(home_off_plays, 'first_down')
+        stats['home_third_down_conv'] = safe_sum(home_off_plays, 'third_down_converted')
+        stats['home_third_down_att'] = safe_sum(home_off_plays, 'third_down_failed') + safe_sum(home_off_plays, 'third_down_converted')
+        stats['home_fourth_down_conv'] = safe_sum(home_off_plays, 'fourth_down_converted')
+        stats['home_fourth_down_att'] = safe_sum(home_off_plays, 'fourth_down_failed') + safe_sum(home_off_plays, 'fourth_down_converted')
 
         # Home team defensive stats (away team offense)
         away_off_plays = game_plays[game_plays['posteam'] == away_team]
-        stats['home_def_yards_allowed'] = away_off_plays['yards_gained'].sum()
-        stats['home_def_yards_per_play'] = away_off_plays['yards_gained'].mean() if len(away_off_plays) > 0 else 0
-        stats['home_turnovers_forced'] = away_off_plays['turnover'].sum()
+        stats['home_def_yards_allowed'] = safe_sum(away_off_plays, 'yards_gained')
+        stats['home_def_yards_per_play'] = safe_mean(away_off_plays, 'yards_gained')
+        stats['home_turnovers_forced'] = safe_sum(away_off_plays, 'turnover')
 
         # Away team offensive stats
         stats['away_total_plays'] = len(away_off_plays)
         stats['away_pass_attempts'] = len(away_off_plays[away_off_plays['play_type'] == 'pass'])
         stats['away_rush_attempts'] = len(away_off_plays[away_off_plays['play_type'] == 'run'])
-        stats['away_total_yards'] = away_off_plays['yards_gained'].sum()
-        stats['away_yards_per_play'] = away_off_plays['yards_gained'].mean() if len(away_off_plays) > 0 else 0
-        stats['away_turnovers'] = away_off_plays['turnover'].sum()
-        stats['away_first_downs'] = away_off_plays['first_down'].sum()
-        stats['away_third_down_conv'] = away_off_plays['third_down_converted'].sum()
-        stats['away_third_down_att'] = away_off_plays['third_down_failed'].sum() + away_off_plays['third_down_converted'].sum()
-        stats['away_fourth_down_conv'] = away_off_plays['fourth_down_converted'].sum()
-        stats['away_fourth_down_att'] = away_off_plays['fourth_down_failed'].sum() + away_off_plays['fourth_down_converted'].sum()
+        stats['away_total_yards'] = safe_sum(away_off_plays, 'yards_gained')
+        stats['away_yards_per_play'] = safe_mean(away_off_plays, 'yards_gained')
+        stats['away_turnovers'] = safe_sum(away_off_plays, 'turnover')
+        stats['away_first_downs'] = safe_sum(away_off_plays, 'first_down')
+        stats['away_third_down_conv'] = safe_sum(away_off_plays, 'third_down_converted')
+        stats['away_third_down_att'] = safe_sum(away_off_plays, 'third_down_failed') + safe_sum(away_off_plays, 'third_down_converted')
+        stats['away_fourth_down_conv'] = safe_sum(away_off_plays, 'fourth_down_converted')
+        stats['away_fourth_down_att'] = safe_sum(away_off_plays, 'fourth_down_failed') + safe_sum(away_off_plays, 'fourth_down_converted')
 
         # Away team defensive stats (home team offense)
-        stats['away_def_yards_allowed'] = home_off_plays['yards_gained'].sum()
-        stats['away_def_yards_per_play'] = home_off_plays['yards_gained'].mean() if len(home_off_plays) > 0 else 0
-        stats['away_turnovers_forced'] = home_off_plays['turnover'].sum()
+        stats['away_def_yards_allowed'] = safe_sum(home_off_plays, 'yards_gained')
+        stats['away_def_yards_per_play'] = safe_mean(home_off_plays, 'yards_gained')
+        stats['away_turnovers_forced'] = safe_sum(home_off_plays, 'turnover')
 
         # Time of possession (in seconds)
-        stats['home_time_of_possession'] = home_off_plays['drive_time_of_possession'].sum()
-        stats['away_time_of_possession'] = away_off_plays['drive_time_of_possession'].sum()
+        stats['home_time_of_possession'] = safe_sum(home_off_plays, 'drive_time_of_possession')
+        stats['away_time_of_possession'] = safe_sum(away_off_plays, 'drive_time_of_possession')
 
         # Red zone efficiency
-        home_rz = home_off_plays[home_off_plays['yardline_100'] <= 20]
-        away_rz = away_off_plays[away_off_plays['yardline_100'] <= 20]
-        stats['home_red_zone_plays'] = len(home_rz)
-        stats['away_red_zone_plays'] = len(away_rz)
+        if 'yardline_100' in home_off_plays.columns:
+            home_rz = home_off_plays[home_off_plays['yardline_100'] <= 20]
+            away_rz = away_off_plays[away_off_plays['yardline_100'] <= 20]
+            stats['home_red_zone_plays'] = len(home_rz)
+            stats['away_red_zone_plays'] = len(away_rz)
+        else:
+            stats['home_red_zone_plays'] = 0
+            stats['away_red_zone_plays'] = 0
 
         # Expected Points Added (EPA)
-        stats['home_epa_total'] = home_off_plays['epa'].sum()
-        stats['home_epa_per_play'] = home_off_plays['epa'].mean() if len(home_off_plays) > 0 else 0
-        stats['away_epa_total'] = away_off_plays['epa'].sum()
-        stats['away_epa_per_play'] = away_off_plays['epa'].mean() if len(away_off_plays) > 0 else 0
+        stats['home_epa_total'] = safe_sum(home_off_plays, 'epa')
+        stats['home_epa_per_play'] = safe_mean(home_off_plays, 'epa')
+        stats['away_epa_total'] = safe_sum(away_off_plays, 'epa')
+        stats['away_epa_per_play'] = safe_mean(away_off_plays, 'epa')
 
         # Win Probability Added (WPA)
-        stats['home_wpa_total'] = home_off_plays['wpa'].sum()
-        stats['away_wpa_total'] = away_off_plays['wpa'].sum()
+        stats['home_wpa_total'] = safe_sum(home_off_plays, 'wpa')
+        stats['away_wpa_total'] = safe_sum(away_off_plays, 'wpa')
 
         game_stats.append(stats)
 
