@@ -1,0 +1,8 @@
+numpy
+pandas
+scikit-learn
+xgboost
+networkx
+matplotlib
+seaborn
+nfl_data_py
