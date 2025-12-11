@@ -11,11 +11,13 @@ This script:
 7. Uses last 20% of data as final test set
 """
 
-import os
-import numpy as np
-import pandas as pd
 import warnings
 from datetime import datetime
+from pathlib import Path
+from typing import Optional
+
+import numpy as np
+import pandas as pd
 
 from sports_arbitrage.models.elo import ELOModel
 from sports_arbitrage.models.rank_centrality import RankCentralityModel
@@ -51,19 +53,28 @@ from sports_arbitrage.plotting import (
 
 warnings.filterwarnings('ignore')
 
+# Random seed for reproducibility
+RANDOM_SEED = 42
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = PROJECT_ROOT / 'data'
+RESULTS_DIR = PROJECT_ROOT / 'results'
+FIGURES_DIR = RESULTS_DIR / 'figures'
 
-def simulate_game_results(games_df: pd.DataFrame) -> pd.DataFrame:
+
+def simulate_game_results(games_df: pd.DataFrame, rng: Optional[np.random.Generator] = None) -> pd.DataFrame:
     """
     Simulate game results based on average odds.
     In production, you would use actual game results.
 
     Args:
         games_df: DataFrame with game data and odds
+        rng: Optional random number generator for reproducibility
 
     Returns:
         DataFrame with simulated results
     """
     df = games_df.copy()
+    rng = rng or np.random.default_rng()
 
     # Use average odds to determine implied probability
     if 'home_avg_odds' in df.columns and 'away_avg_odds' in df.columns:
@@ -72,14 +83,14 @@ def simulate_game_results(games_df: pd.DataFrame) -> pd.DataFrame:
         )
 
         # Add some randomness to make it realistic
-        df['home_true_prob'] = df['home_implied_prob'] + np.random.normal(0, 0.05, len(df))
+        df['home_true_prob'] = df['home_implied_prob'] + rng.normal(0, 0.05, len(df))
         df['home_true_prob'] = df['home_true_prob'].clip(0.1, 0.9)
 
         # Simulate results
-        df['home_won'] = np.random.random(len(df)) < df['home_true_prob']
+        df['home_won'] = rng.random(len(df)) < df['home_true_prob']
     else:
         # If no odds, use 50/50
-        df['home_won'] = np.random.random(len(df)) < 0.5
+        df['home_won'] = rng.random(len(df)) < 0.5
 
     return df
 
@@ -87,14 +98,17 @@ def simulate_game_results(games_df: pd.DataFrame) -> pd.DataFrame:
 def main():
     """Main execution function."""
 
+    rng = np.random.default_rng(RANDOM_SEED)
+
     print("=" * 80)
     print("SPORTS BETTING ARBITRAGE ANALYSIS")
     print("=" * 80)
+    print(f"Random seed: {RANDOM_SEED}")
     print()
 
     # Create output directory
-    os.makedirs('../results', exist_ok=True)
-    os.makedirs('../results/figures', exist_ok=True)
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
     # =========================================================================
     # 1. LOAD AND PREPARE DATA
@@ -103,8 +117,8 @@ def main():
     print("-" * 80)
 
     # Load odds data
-    odds_file = '../data/odds_2020_2024_combined.csv'
-    if not os.path.exists(odds_file):
+    odds_file = DATA_DIR / 'odds_2020_2024_combined.csv'
+    if not odds_file.exists():
         print(f"ERROR: {odds_file} not found!")
         print("Please ensure the data file exists in the data/ directory.")
         return
@@ -118,8 +132,8 @@ def main():
     print(f"   Prepared {len(games_df):,} unique games")
 
     # Load actual game results
-    results_file = '../data/nfl_games_with_stats.csv'
-    if os.path.exists(results_file):
+    results_file = DATA_DIR / 'nfl_games_with_stats.csv'
+    if results_file.exists():
         print(f"   Loading actual game results from {results_file}...")
         results_df = pd.read_csv(results_file, parse_dates=['commence_time'])
 
@@ -163,7 +177,7 @@ def main():
     else:
         # Fallback to simulation if results file not found
         print(f"   WARNING: {results_file} not found, simulating results...")
-        games_df = simulate_game_results(games_df)
+        games_df = simulate_game_results(games_df, rng=rng)
         games_df['home_won'] = games_df['home_won'].astype(bool)
     print()
 
@@ -442,24 +456,24 @@ def main():
     # Model comparison
     print("   Creating model comparison plots...")
     plot_model_comparison(cv_results_df, metric='accuracy',
-                         save_path='../results/figures/model_comparison_accuracy.png')
+                         save_path=str(FIGURES_DIR / 'model_comparison_accuracy.png'))
     plot_model_comparison(cv_results_df, metric='log_loss',
-                         save_path='../results/figures/model_comparison_logloss.png')
+                         save_path=str(FIGURES_DIR / 'model_comparison_logloss.png'))
 
     # ROI comparison
     if roi_results:
         print("   Creating ROI comparison plot...")
         plot_roi_comparison(
-            fixed_roi_results=roi_results,
-            kelly_roi_results=kelly_roi_results,
-            markowitz_roi_results=markowitz_roi_results,
-            save_path='../results/figures/roi_comparison.png'
+            roi_results,
+            kelly_roi_results,
+            markowitz_roi_results,
+            save_path=str(FIGURES_DIR / 'roi_comparison.png')
         )
 
     # Prediction distributions
     print("   Creating prediction distribution plots...")
     plot_prediction_distribution(test_predictions,
-                                save_path='../results/figures/prediction_distributions.png')
+                                save_path=str(FIGURES_DIR / 'prediction_distributions.png'))
 
     # Feature importance for tree-based models
     print("   Creating feature importance plots...")
@@ -467,7 +481,7 @@ def main():
         if hasattr(model, 'get_feature_importance'):
             importance_df = model.get_feature_importance()
             plot_feature_importance(importance_df, model_name=model_name,
-                                   save_path=f'../results/figures/feature_importance_{model_name.replace(" ", "_").lower()}.png')
+                                   save_path=str(FIGURES_DIR / f"feature_importance_{model_name.replace(' ', '_').lower()}.png"))
 
     # Calibration curves
     print("   Creating calibration curves...")
@@ -476,19 +490,19 @@ def main():
             test_data['home_won'].values.astype(int),
             preds,
             model_name=model_name,
-            save_path=f'../results/figures/calibration_{model_name.replace(" ", "_").lower()}.png'
+            save_path=str(FIGURES_DIR / f"calibration_{model_name.replace(' ', '_').lower()}.png")
         )
 
     # Arbitrage opportunities
     if len(arb_opportunities) > 0:
         print("   Creating arbitrage opportunities plot...")
         plot_arbitrage_opportunities(arb_opportunities,
-                                    save_path='../results/figures/arbitrage_opportunities.png')
+                                    save_path=str(FIGURES_DIR / 'arbitrage_opportunities.png'))
 
     # Metrics heatmap
     print("   Creating metrics heatmap...")
     plot_metrics_heatmap(cv_results_df,
-                        save_path='../results/figures/metrics_heatmap.png')
+                        save_path=str(FIGURES_DIR / 'metrics_heatmap.png'))
 
     # Strategy comparison
     if roi_results and kelly_roi_results and markowitz_roi_results:
@@ -497,25 +511,25 @@ def main():
             roi_results,
             kelly_roi_results,
             markowitz_roi_results,
-            save_path='../results/figures/strategy_roi_comparison.png'
+            save_path=str(FIGURES_DIR / 'strategy_roi_comparison.png')
         )
         plot_strategy_profit_comparison(
             roi_results,
             kelly_roi_results,
             markowitz_roi_results,
-            save_path='../results/figures/strategy_profit_comparison.png'
+            save_path=str(FIGURES_DIR / 'strategy_profit_comparison.png')
         )
         plot_strategy_bet_frequency(
             roi_results,
             kelly_roi_results,
             markowitz_roi_results,
-            save_path='../results/figures/strategy_bet_frequency.png'
+            save_path=str(FIGURES_DIR / 'strategy_bet_frequency.png')
         )
         plot_strategy_best_strategy_counts(
             roi_results,
             kelly_roi_results,
             markowitz_roi_results,
-            save_path='../results/figures/strategy_best_strategy_counts.png'
+            save_path=str(FIGURES_DIR / 'strategy_best_strategy_counts.png')
         )
 
     print()
@@ -527,22 +541,22 @@ def main():
     print("-" * 80)
 
     # Save CV results
-    cv_results_df.to_csv('../results/cv_results.csv', index=False)
+    cv_results_df.to_csv(RESULTS_DIR / 'cv_results.csv', index=False)
     print("   Saved cross-validation results to results/cv_results.csv")
 
     # Save test results
-    test_results_df.to_csv('../results/test_results.csv', index=False)
+    test_results_df.to_csv(RESULTS_DIR / 'test_results.csv', index=False)
     print("   Saved test results to results/test_results.csv")
 
     # Save ROI results
     if roi_results:
         roi_df = pd.DataFrame(roi_results).T
-        roi_df.to_csv('../results/roi_results.csv')
+        roi_df.to_csv(RESULTS_DIR / 'roi_results.csv')
         print("   Saved ROI results to results/roi_results.csv")
 
     # Save arbitrage opportunities
     if len(arb_opportunities) > 0:
-        arb_opportunities.to_csv('../results/arbitrage_opportunities.csv', index=False)
+        arb_opportunities.to_csv(RESULTS_DIR / 'arbitrage_opportunities.csv', index=False)
         print("   Saved arbitrage opportunities to results/arbitrage_opportunities.csv")
 
     print()

@@ -8,6 +8,7 @@ for structured data and can capture complex non-linear relationships.
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+from datetime import datetime
 from typing import Dict, Optional, Tuple
 
 
@@ -173,20 +174,25 @@ class XGBoostModel:
         probabilities = self.model.predict_proba(X)[:, 1]
         return probabilities
 
-    def predict_game(self, home_team: str, away_team: str) -> Tuple[float, float]:
+    def predict_game(self, home_team: str, away_team: str,
+                     commence_time: Optional[pd.Timestamp] = None) -> Tuple[float, float]:
         """
         Predict win probabilities for a single game.
 
         Args:
             home_team: Name of home team
             away_team: Name of away team
+            commence_time: Optional game time (defaults to today if not provided)
 
         Returns:
             Tuple of (home_win_prob, away_win_prob)
         """
+        commence_time = commence_time or pd.Timestamp(datetime.utcnow())
+
         game_df = pd.DataFrame([{
             'home_team': home_team,
-            'away_team': away_team
+            'away_team': away_team,
+            'commence_time': commence_time
         }])
 
         home_prob = self.predict(game_df)[0]

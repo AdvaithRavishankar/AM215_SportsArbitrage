@@ -27,3 +27,19 @@ dist/
 
 # Results and generated artifacts
 results/
+
+# Test, coverage, and cache artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+
+# Docs build artifacts
+docs/_build/
+
+# Profiling outputs
+*.prof
+*.pstats

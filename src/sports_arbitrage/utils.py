@@ -111,7 +111,11 @@ def prepare_games_data(odds_df: pd.DataFrame) -> pd.DataFrame:
     return games_with_odds
 
 
-def add_game_results(games_df: pd.DataFrame, results_df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+def add_game_results(
+    games_df: pd.DataFrame,
+    results_df: Optional[pd.DataFrame] = None,
+    rng: Optional[np.random.Generator] = None
+) -> pd.DataFrame:
     """
     Add game results to games DataFrame.
 
@@ -126,6 +130,7 @@ def add_game_results(games_df: pd.DataFrame, results_df: Optional[pd.DataFrame] 
         DataFrame with 'home_won' column added
     """
     df = games_df.copy()
+    rng = rng or np.random.default_rng()
 
     if results_df is not None:
         # Merge with actual results
@@ -140,10 +145,10 @@ def add_game_results(games_df: pd.DataFrame, results_df: Optional[pd.DataFrame] 
             df['home_prob'] = df['home_avg_odds'].apply(
                 lambda x: american_to_probability(x) if pd.notna(x) else 0.5
             )
-            df['home_won'] = np.random.random(len(df)) < df['home_prob']
+            df['home_won'] = rng.random(len(df)) < df['home_prob']
         else:
             # Random if no odds available
-            df['home_won'] = np.random.random(len(df)) < 0.5
+            df['home_won'] = rng.random(len(df)) < 0.5
 
     return df
 
