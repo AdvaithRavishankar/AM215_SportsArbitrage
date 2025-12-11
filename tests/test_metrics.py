@@ -2,12 +2,13 @@
 Tests for ROI calculations and betting strategies.
 """
 
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
+
 from sports_arbitrage.utils import (
-    calculate_roi,
     calculate_kelly_roi,
+    calculate_roi,
     optimize_markowitz_portfolio,
 )
 

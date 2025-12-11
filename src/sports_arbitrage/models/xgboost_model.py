@@ -5,11 +5,12 @@ XGBoost is a gradient boosting framework that uses decision trees. It's effectiv
 for structured data and can capture complex non-linear relationships.
 """
 
+from datetime import datetime
+from typing import Dict, Optional, Tuple
+
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from datetime import datetime
-from typing import Dict, Optional, Tuple
 
 
 class XGBoostModel:

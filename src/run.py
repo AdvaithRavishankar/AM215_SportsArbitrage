@@ -12,7 +12,6 @@ This script:
 """
 
 import warnings
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -20,35 +19,32 @@ import numpy as np
 import pandas as pd
 
 from sports_arbitrage.models.elo import ELOModel
+from sports_arbitrage.models.random_forest import RandomForestModel
 from sports_arbitrage.models.rank_centrality import RankCentralityModel
 from sports_arbitrage.models.xgboost_model import XGBoostModel
-from sports_arbitrage.models.random_forest import RandomForestModel
-
-from sports_arbitrage.utils import (
-    load_odds_data,
-    prepare_games_data,
-    add_game_results,
-    create_rolling_windows,
-    calculate_metrics,
-    calculate_roi,
-    calculate_kelly_roi,
-    calculate_markowitz_roi,
-    find_arbitrage_opportunities,
-    american_to_probability,
-)
-
 from sports_arbitrage.plotting import (
-    plot_model_comparison,
-    plot_roi_comparison,
+    plot_arbitrage_opportunities,
     plot_calibration_curve,
     plot_feature_importance,
-    plot_prediction_distribution,
-    plot_arbitrage_opportunities,
     plot_metrics_heatmap,
-    plot_strategy_roi_comparison,
-    plot_strategy_profit_comparison,
-    plot_strategy_bet_frequency,
+    plot_model_comparison,
+    plot_prediction_distribution,
+    plot_roi_comparison,
     plot_strategy_best_strategy_counts,
+    plot_strategy_bet_frequency,
+    plot_strategy_profit_comparison,
+    plot_strategy_roi_comparison,
+)
+from sports_arbitrage.utils import (
+    american_to_probability,
+    calculate_kelly_roi,
+    calculate_markowitz_roi,
+    calculate_metrics,
+    calculate_roi,
+    create_rolling_windows,
+    find_arbitrage_opportunities,
+    load_odds_data,
+    prepare_games_data,
 )
 
 warnings.filterwarnings("ignore")
@@ -234,7 +230,7 @@ def main():
     }
 
     cv_results = []
-    all_predictions = {name: [] for name in models.keys()}
+    all_predictions = {name: [] for name in models}
     all_actuals = []
 
     for fold_idx, (train_df, val_df) in enumerate(folds):
@@ -319,7 +315,7 @@ def main():
 
     roi_results = {}
 
-    for model_name in models.keys():
+    for model_name in models:
         predictions = test_predictions[model_name]
         actuals = test_data["home_won"].values.astype(int)
 
@@ -346,7 +342,7 @@ def main():
 
     kelly_roi_results = {}
 
-    for model_name in models.keys():
+    for model_name in models:
         predictions = test_predictions[model_name]
         actuals = test_data["home_won"].values.astype(int)
 
@@ -374,7 +370,7 @@ def main():
 
     markowitz_roi_results = {}
 
-    for model_name in models.keys():
+    for model_name in models:
         predictions = test_predictions[model_name]
         actuals = test_data["home_won"].values.astype(int)
         dates = test_data["commence_time"].dt.date.values
@@ -408,7 +404,7 @@ def main():
         f"{'Model':<20} {'Fixed ROI':>12} {'Kelly ROI':>12} {'Markowitz ROI':>15} {'Best Strategy':>20}"
     )
     print("-" * 100)
-    for model_name in models.keys():
+    for model_name in models:
         fixed_roi = roi_results[model_name]["roi"]
         kelly_roi = kelly_roi_results[model_name]["roi"]
         mark_roi = markowitz_roi_results[model_name]["roi"]
@@ -449,7 +445,7 @@ def main():
         print("   " + "=" * 78)
         top_5 = arb_opportunities.nlargest(5, "arbitrage_roi")
 
-        for idx, row in top_5.iterrows():
+        for _idx, row in top_5.iterrows():
             print(f"   {row['away_team']} @ {row['home_team']}")
             print(
                 f"      Home: {row['home_sportsbook']} ({row['home_odds']:+.0f}) - "

@@ -2,10 +2,11 @@
 Pytest configuration and shared fixtures for sports betting arbitrage tests.
 """
 
-import pytest
+from datetime import datetime, timedelta
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+import pytest
 
 
 @pytest.fixture

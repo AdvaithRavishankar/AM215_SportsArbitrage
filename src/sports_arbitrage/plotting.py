@@ -2,14 +2,14 @@
 Plotting and visualization functions for sports betting analysis.
 """
 
+from typing import Dict, List, Optional
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import Dict, List, Optional
 from matplotlib.figure import Figure
 from matplotlib.patches import Patch
-
 
 # Professional color palette (colorblind-friendly - Paul Tol scheme)
 MODEL_COLORS = {
@@ -168,7 +168,7 @@ def plot_roi_comparison(
     ax1.grid(axis="y", alpha=0.3)
 
     # Add ROI value labels INSIDE bars
-    for i, (model, roi, strategy) in enumerate(zip(models, best_roi_values, best_strategies)):
+    for i, (_model, roi, _strategy) in enumerate(zip(models, best_roi_values, best_strategies)):
         # Place label inside bar (centered vertically within the bar)
         ax1.text(
             i,
@@ -182,7 +182,7 @@ def plot_roi_comparison(
         )
 
     # Add strategy labels below x-axis
-    for i, (model, strategy) in enumerate(zip(models, best_strategies)):
+    for i, (_model, strategy) in enumerate(zip(models, best_strategies)):
         ax1.text(
             i,
             min(best_roi_values) - abs(max(best_roi_values) - min(best_roi_values)) * 0.1,
@@ -210,7 +210,7 @@ def plot_roi_comparison(
     ax2.grid(axis="y", alpha=0.3)
 
     # Add profit value labels INSIDE bars
-    for i, (model, profit, strategy) in enumerate(zip(models, best_profit_values, best_strategies)):
+    for i, (_model, profit, _strategy) in enumerate(zip(models, best_profit_values, best_strategies)):
         # Place label inside bar (centered vertically within the bar)
         ax2.text(
             i,
@@ -224,7 +224,7 @@ def plot_roi_comparison(
         )
 
     # Add strategy labels below x-axis
-    for i, (model, strategy) in enumerate(zip(models, best_strategies)):
+    for i, (_model, strategy) in enumerate(zip(models, best_strategies)):
         ax2.text(
             i,
             min(best_profit_values) - abs(max(best_profit_values) - min(best_profit_values)) * 0.1,
@@ -594,7 +594,7 @@ def _prepare_strategy_data(
     }
 
     best_strategies = []
-    for i, model in enumerate(models):
+    for i, _model in enumerate(models):
         rois = {
             "Fixed": data["fixed_roi"][i],
             "Kelly": data["kelly_roi"][i],
@@ -640,7 +640,7 @@ def plot_strategy_comparison(
 
     # ROI Comparison (top-left)
     ax1 = axes[0, 0]
-    bars1 = ax1.bar(
+    ax1.bar(
         x - width,
         data["fixed_roi"],
         width,
@@ -650,7 +650,7 @@ def plot_strategy_comparison(
         edgecolor="black",
         linewidth=1.5,
     )
-    bars2 = ax1.bar(
+    ax1.bar(
         x,
         data["kelly_roi"],
         width,
@@ -660,7 +660,7 @@ def plot_strategy_comparison(
         edgecolor="black",
         linewidth=1.5,
     )
-    bars3 = ax1.bar(
+    ax1.bar(
         x + width,
         data["mark_roi"],
         width,
@@ -682,7 +682,7 @@ def plot_strategy_comparison(
 
     # Profit Comparison (top-right)
     ax2 = axes[0, 1]
-    bars1 = ax2.bar(
+    ax2.bar(
         x - width,
         data["fixed_profit"],
         width,
@@ -692,7 +692,7 @@ def plot_strategy_comparison(
         edgecolor="black",
         linewidth=1.5,
     )
-    bars2 = ax2.bar(
+    ax2.bar(
         x,
         data["kelly_profit"],
         width,
@@ -702,7 +702,7 @@ def plot_strategy_comparison(
         edgecolor="black",
         linewidth=1.5,
     )
-    bars3 = ax2.bar(
+    ax2.bar(
         x + width,
         data["mark_profit"],
         width,
@@ -724,7 +724,7 @@ def plot_strategy_comparison(
 
     # Number of Bets (bottom-left)
     ax3 = axes[1, 0]
-    bars1 = ax3.bar(
+    ax3.bar(
         x - width,
         data["fixed_bets"],
         width,
@@ -734,7 +734,7 @@ def plot_strategy_comparison(
         edgecolor="black",
         linewidth=1.5,
     )
-    bars2 = ax3.bar(
+    ax3.bar(
         x,
         data["kelly_bets"],
         width,
@@ -744,7 +744,7 @@ def plot_strategy_comparison(
         edgecolor="black",
         linewidth=1.5,
     )
-    bars3 = ax3.bar(
+    ax3.bar(
         x + width,
         data["mark_bets"],
         width,

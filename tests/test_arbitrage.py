@@ -2,9 +2,8 @@
 Tests for arbitrage detection and opportunity finding.
 """
 
-import pytest
-import numpy as np
 import pandas as pd
+
 from sports_arbitrage.utils import find_arbitrage_opportunities
 
 

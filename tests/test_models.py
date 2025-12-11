@@ -2,13 +2,12 @@
 Tests for prediction models (ELO, XGBoost, Random Forest, Rank Centrality).
 """
 
-import pytest
-import numpy as np
 import pandas as pd
+
 from sports_arbitrage.models.elo import ELOModel
-from sports_arbitrage.models.xgboost_model import XGBoostModel
 from sports_arbitrage.models.random_forest import RandomForestModel
 from sports_arbitrage.models.rank_centrality import RankCentralityModel
+from sports_arbitrage.models.xgboost_model import XGBoostModel
 
 
 class TestELOModel:

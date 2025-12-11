@@ -5,13 +5,12 @@ These tests compare current model outputs against saved 'golden' reference outpu
 to catch any unintended changes in model behavior.
 """
 
-import pytest
-import numpy as np
-import pandas as pd
-import os
 import json
+import os
 from pathlib import Path
 
+import numpy as np
+import pytest
 
 GOLDEN_DIR = Path(__file__).parent / "golden"
 
@@ -85,7 +84,7 @@ class TestRegressionROI:
 
         # Load golden ROI
         if golden_roi_path.exists():
-            with open(golden_roi_path, "r") as f:
+            with open(golden_roi_path) as f:
                 golden_roi = json.load(f)
 
             # Compare key metrics

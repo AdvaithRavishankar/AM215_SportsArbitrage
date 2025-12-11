@@ -4,11 +4,12 @@ Utility functions for sports betting arbitrage system.
 Includes data loading, preprocessing, evaluation metrics, and arbitrage calculations.
 """
 
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Optional
-from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, brier_score_loss
 from scipy.optimize import minimize
+from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, roc_auc_score
 
 
 def load_odds_data(filepath: str) -> pd.DataFrame:
@@ -243,10 +244,7 @@ def calculate_roi(
 
             if won:
                 # Calculate payout from American odds
-                if odd < 0:
-                    profit = bet_amount * (100 / abs(odd))
-                else:
-                    profit = bet_amount * (odd / 100)
+                profit = bet_amount * (100 / abs(odd)) if odd < 0 else bet_amount * (odd / 100)
 
                 total_return += bet_amount + profit
             # else: lost bet, return is 0
@@ -346,10 +344,7 @@ def calculate_kelly_criterion(win_prob: float, odds: float, fraction: float = 0.
         raise ValueError(f"Invalid Kelly fraction: {fraction}. Must be between 0 and 1")
 
     # Convert American odds to decimal
-    if odds < 0:
-        decimal_odds = 1 + (100 / abs(odds))
-    else:
-        decimal_odds = 1 + (odds / 100)
+    decimal_odds = 1 + (100 / abs(odds)) if odds < 0 else 1 + (odds / 100)
 
     # Kelly formula: (bp - q) / b
     # where b = decimal odds - 1, p = win prob, q = 1 - p
@@ -377,10 +372,7 @@ def estimate_game_variance(win_prob: float, odds: float) -> float:
         Variance of return
     """
     # Convert odds to payout ratio
-    if odds < 0:
-        payout = 100 / abs(odds)
-    else:
-        payout = odds / 100
+    payout = 100 / abs(odds) if odds < 0 else odds / 100
 
     # Expected return
     expected_return = win_prob * payout - (1 - win_prob) * 1
@@ -411,10 +403,7 @@ def calculate_portfolio_metrics(
 
     for i in range(n_games):
         # Payout ratio
-        if odds[i] < 0:
-            payout = 100 / abs(odds[i])
-        else:
-            payout = odds[i] / 100
+        payout = 100 / abs(odds[i]) if odds[i] < 0 else odds[i] / 100
 
         # Expected return
         expected_returns[i] = predictions[i] * payout - (1 - predictions[i])
@@ -542,10 +531,7 @@ def calculate_markowitz_roi(
         edges = []
         for i, (pred, odd) in enumerate(zip(date_preds, date_odds)):
             # Convert odds to implied probability
-            if odd < 0:
-                implied_prob = abs(odd) / (abs(odd) + 100)
-            else:
-                implied_prob = 100 / (odd + 100)
+            implied_prob = abs(odd) / (abs(odd) + 100) if odd < 0 else 100 / (odd + 100)
 
             if pred > implied_prob + 0.05:  # Require 5% edge
                 edges.append(i)
@@ -570,7 +556,7 @@ def calculate_markowitz_roi(
         )
 
         # Place bets
-        for i, (weight, odd, won) in enumerate(zip(weights, edge_odds, edge_wins)):
+        for _i, (weight, odd, won) in enumerate(zip(weights, edge_odds, edge_wins)):
             bet_amount = weight * current_bankroll
 
             if bet_amount < 1:  # Minimum bet $1
@@ -581,10 +567,7 @@ def calculate_markowitz_roi(
 
             if won:
                 # Calculate profit
-                if odd < 0:
-                    profit = bet_amount * (100 / abs(odd))
-                else:
-                    profit = bet_amount * (odd / 100)
+                profit = bet_amount * (100 / abs(odd)) if odd < 0 else bet_amount * (odd / 100)
 
                 payout = bet_amount + profit
                 total_return += payout
@@ -643,10 +626,7 @@ def calculate_kelly_roi(
 
             if won:
                 # Calculate profit
-                if odd < 0:
-                    profit = bet_amount * (100 / abs(odd))
-                else:
-                    profit = bet_amount * (odd / 100)
+                profit = bet_amount * (100 / abs(odd)) if odd < 0 else bet_amount * (odd / 100)
 
                 payout = bet_amount + profit
                 total_return += payout

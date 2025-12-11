@@ -6,10 +6,11 @@ the outcomes of games played. It constructs a graph of teams and uses eigenvecto
 centrality or similar metrics to rank teams.
 """
 
+from typing import Dict, Tuple
+
+import networkx as nx
 import numpy as np
 import pandas as pd
-import networkx as nx
-from typing import Dict, Tuple
 
 
 class RankCentralityModel:

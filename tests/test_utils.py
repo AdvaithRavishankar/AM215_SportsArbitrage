@@ -2,15 +2,16 @@
 Tests for utility functions (data processing, metrics, odds conversion).
 """
 
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
+
 from sports_arbitrage.utils import (
     american_to_probability,
-    probability_to_american,
     calculate_kelly_criterion,
     calculate_metrics,
     prepare_games_data,
+    probability_to_american,
 )
 
 

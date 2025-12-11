@@ -5,11 +5,11 @@ This module collects NFL game data and play-by-play data using nfl_data_py libra
 It aggregates play-by-play data to game-level statistics and matches with betting odds data.
 """
 
-import pandas as pd
-import numpy as np
-import nfl_data_py as nfl
-from typing import Dict, List, Tuple
 import warnings
+from typing import List
+
+import nfl_data_py as nfl
+import pandas as pd
 
 warnings.filterwarnings("ignore")
 
@@ -153,7 +153,7 @@ def aggregate_pbp_to_game_stats(pbp_df: pd.DataFrame) -> pd.DataFrame:
         try:
             # Convert to numeric, coercing errors to NaN, then sum (NaN values are ignored)
             return pd.to_numeric(df[col], errors="coerce").sum()
-        except:
+        except Exception:
             return 0
 
     # Helper function to safely calculate mean
@@ -163,7 +163,7 @@ def aggregate_pbp_to_game_stats(pbp_df: pd.DataFrame) -> pd.DataFrame:
         try:
             # Convert to numeric, coercing errors to NaN, then calculate mean
             return pd.to_numeric(df[col], errors="coerce").mean()
-        except:
+        except Exception:
             return 0
 
     # Filter to only plays that count (remove timeouts, kickoffs, etc.)
@@ -337,7 +337,7 @@ def match_with_odds_data(
 
 
 def collect_and_save_nfl_data(
-    odds_filepath: str, output_filepath: str, years: List[int] = [2020, 2021, 2022, 2023, 2024]
+    odds_filepath: str, output_filepath: str, years: List[int] | None = None
 ):
     """
     Main function to collect NFL data, aggregate statistics, and save to CSV.
@@ -358,6 +358,8 @@ def collect_and_save_nfl_data(
     odds_df["commence_time"] = pd.to_datetime(odds_df["commence_time"])
     print(f"Loaded {len(odds_df)} odds records")
     print()
+
+    years = years or [2020, 2021, 2022, 2023, 2024]
 
     # Fetch NFL game data
     nfl_games = fetch_nfl_game_data(years)

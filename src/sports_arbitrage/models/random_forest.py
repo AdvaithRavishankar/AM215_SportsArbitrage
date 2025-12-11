@@ -5,11 +5,12 @@ Random Forest is an ensemble learning method that operates by constructing
 multiple decision trees and outputting the mode of their predictions.
 """
 
+from datetime import datetime
+from typing import Dict, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from datetime import datetime
 from sklearn.ensemble import RandomForestClassifier
-from typing import Dict, Optional, Tuple
 
 
 class RandomForestModel:

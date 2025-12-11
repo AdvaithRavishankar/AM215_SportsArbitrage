@@ -5,9 +5,10 @@ The ELO rating system is a method for calculating the relative skill levels of p
 or teams in competitive games. It updates ratings based on game outcomes.
 """
 
+from typing import Dict, Tuple
+
 import numpy as np
 import pandas as pd
-from typing import Dict, Tuple
 
 
 class ELOModel:
