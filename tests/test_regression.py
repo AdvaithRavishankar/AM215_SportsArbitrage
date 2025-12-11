@@ -52,7 +52,7 @@ class TestRegressionELO:
                 golden_predictions,
                 rtol=1e-5,
                 atol=1e-8,
-                err_msg="ELO predictions have changed from golden reference"
+                err_msg="ELO predictions have changed from golden reference",
             )
         else:
             # Create golden file for first run
@@ -78,27 +78,30 @@ class TestRegressionROI:
         predictions = model.predict(test_df)
         roi_result = calculate_roi(
             predictions=predictions,
-            odds=test_df['home_avg_odds'].values,
-            actual_wins=test_df['home_won'].astype(int).values,
-            bet_amount=100
+            odds=test_df["home_avg_odds"].values,
+            actual_wins=test_df["home_won"].astype(int).values,
+            bet_amount=100,
         )
 
         # Load golden ROI
         if golden_roi_path.exists():
-            with open(golden_roi_path, 'r') as f:
+            with open(golden_roi_path, "r") as f:
                 golden_roi = json.load(f)
 
             # Compare key metrics
-            assert abs(roi_result['roi'] - golden_roi['roi']) < 0.01, \
-                "ROI has changed from golden reference"
-            assert abs(roi_result['profit'] - golden_roi['profit']) < 1.0, \
-                "Profit has changed from golden reference"
-            assert roi_result['num_bets'] == golden_roi['num_bets'], \
-                "Number of bets has changed from golden reference"
+            assert (
+                abs(roi_result["roi"] - golden_roi["roi"]) < 0.01
+            ), "ROI has changed from golden reference"
+            assert (
+                abs(roi_result["profit"] - golden_roi["profit"]) < 1.0
+            ), "Profit has changed from golden reference"
+            assert (
+                roi_result["num_bets"] == golden_roi["num_bets"]
+            ), "Number of bets has changed from golden reference"
         else:
             # Create golden file for first run
             os.makedirs(GOLDEN_DIR, exist_ok=True)
-            with open(golden_roi_path, 'w') as f:
+            with open(golden_roi_path, "w") as f:
                 json.dump(roi_result, f, indent=2)
             pytest.skip("Golden file created - rerun test to validate")
 

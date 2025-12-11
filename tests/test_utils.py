@@ -127,10 +127,10 @@ class TestMetricsCalculation:
 
         metrics = calculate_metrics(y_true, y_pred)
 
-        assert metrics['accuracy'] == 1.0
-        assert metrics['roc_auc'] == 1.0
-        assert metrics['log_loss'] < 0.1  # Very small log loss
-        assert metrics['brier_score'] < 0.1  # Very small Brier score
+        assert metrics["accuracy"] == 1.0
+        assert metrics["roc_auc"] == 1.0
+        assert metrics["log_loss"] < 0.1  # Very small log loss
+        assert metrics["brier_score"] < 0.1  # Very small Brier score
 
     def test_calculate_metrics_random_predictions(self):
         """Test metrics with random predictions."""
@@ -140,10 +140,10 @@ class TestMetricsCalculation:
 
         metrics = calculate_metrics(y_true, y_pred)
 
-        assert 0 <= metrics['accuracy'] <= 1
-        assert 0 <= metrics['roc_auc'] <= 1
-        assert metrics['log_loss'] >= 0
-        assert 0 <= metrics['brier_score'] <= 1
+        assert 0 <= metrics["accuracy"] <= 1
+        assert 0 <= metrics["roc_auc"] <= 1
+        assert metrics["log_loss"] >= 0
+        assert 0 <= metrics["brier_score"] <= 1
 
     def test_calculate_metrics_consistent_predictions(self):
         """Test that better predictions yield better metrics."""
@@ -157,10 +157,10 @@ class TestMetricsCalculation:
         metrics_good = calculate_metrics(y_true, good_pred)
         metrics_bad = calculate_metrics(y_true, bad_pred)
 
-        assert metrics_good['accuracy'] > metrics_bad['accuracy']
-        assert metrics_good['roc_auc'] > metrics_bad['roc_auc']
-        assert metrics_good['log_loss'] < metrics_bad['log_loss']
-        assert metrics_good['brier_score'] < metrics_bad['brier_score']
+        assert metrics_good["accuracy"] > metrics_bad["accuracy"]
+        assert metrics_good["roc_auc"] > metrics_bad["roc_auc"]
+        assert metrics_good["log_loss"] < metrics_bad["log_loss"]
+        assert metrics_good["brier_score"] < metrics_bad["brier_score"]
 
 
 class TestDataPreparation:
@@ -171,19 +171,19 @@ class TestDataPreparation:
         games_df = prepare_games_data(sample_odds_df)
 
         assert isinstance(games_df, pd.DataFrame)
-        assert 'game_id' in games_df.columns
-        assert 'home_team' in games_df.columns
-        assert 'away_team' in games_df.columns
-        assert 'home_avg_odds' in games_df.columns
-        assert 'away_avg_odds' in games_df.columns
+        assert "game_id" in games_df.columns
+        assert "home_team" in games_df.columns
+        assert "away_team" in games_df.columns
+        assert "home_avg_odds" in games_df.columns
+        assert "away_avg_odds" in games_df.columns
 
         # Check that odds are averaged across sportsbooks
         assert len(games_df) > 0
-        assert games_df['home_avg_odds'].notna().any()
+        assert games_df["home_avg_odds"].notna().any()
 
     def test_prepare_games_data_unique_games(self, sample_odds_df):
         """Test that games are deduplicated properly."""
         games_df = prepare_games_data(sample_odds_df)
 
         # Each game_id should appear only once
-        assert len(games_df) == games_df['game_id'].nunique()
+        assert len(games_df) == games_df["game_id"].nunique()

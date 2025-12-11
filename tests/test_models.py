@@ -40,7 +40,7 @@ class TestELOModel:
 
     def test_predict_game(self, trained_elo_model):
         """Test single game prediction."""
-        home_prob, away_prob = trained_elo_model.predict_game('Team_A', 'Team_B')
+        home_prob, away_prob = trained_elo_model.predict_game("Team_A", "Team_B")
 
         assert 0 <= home_prob <= 1
         assert 0 <= away_prob <= 1
@@ -82,7 +82,7 @@ class TestXGBoostModel:
 
     def test_predict_game(self, trained_xgboost_model):
         """Test single game prediction."""
-        home_prob, away_prob = trained_xgboost_model.predict_game('Team_A', 'Team_B')
+        home_prob, away_prob = trained_xgboost_model.predict_game("Team_A", "Team_B")
 
         assert 0 <= home_prob <= 1
         assert 0 <= away_prob <= 1
@@ -93,8 +93,8 @@ class TestXGBoostModel:
         importance_df = trained_xgboost_model.get_feature_importance()
 
         assert isinstance(importance_df, pd.DataFrame)
-        assert 'feature' in importance_df.columns
-        assert 'importance' in importance_df.columns
+        assert "feature" in importance_df.columns
+        assert "importance" in importance_df.columns
         assert len(importance_df) == len(trained_xgboost_model.feature_names)
 
 
@@ -126,7 +126,7 @@ class TestRandomForestModel:
 
     def test_predict_game(self, trained_random_forest_model):
         """Test single game prediction."""
-        home_prob, away_prob = trained_random_forest_model.predict_game('Team_A', 'Team_B')
+        home_prob, away_prob = trained_random_forest_model.predict_game("Team_A", "Team_B")
 
         assert 0 <= home_prob <= 1
         assert 0 <= away_prob <= 1
@@ -137,8 +137,8 @@ class TestRandomForestModel:
         importance_df = trained_random_forest_model.get_feature_importance()
 
         assert isinstance(importance_df, pd.DataFrame)
-        assert 'feature' in importance_df.columns
-        assert 'importance' in importance_df.columns
+        assert "feature" in importance_df.columns
+        assert "importance" in importance_df.columns
 
 
 class TestRankCentralityModel:
@@ -146,8 +146,8 @@ class TestRankCentralityModel:
 
     def test_initialization(self):
         """Test Rank Centrality model initialization."""
-        model = RankCentralityModel(method='pagerank', damping_factor=0.85)
-        assert model.method == 'pagerank'
+        model = RankCentralityModel(method="pagerank", damping_factor=0.85)
+        assert model.method == "pagerank"
         assert model.damping_factor == 0.85
         assert model.rankings == {}
 
@@ -169,7 +169,7 @@ class TestRankCentralityModel:
 
     def test_predict_game(self, trained_rank_centrality_model):
         """Test single game prediction."""
-        home_prob, away_prob = trained_rank_centrality_model.predict_game('Team_A', 'Team_B')
+        home_prob, away_prob = trained_rank_centrality_model.predict_game("Team_A", "Team_B")
 
         assert 0 <= home_prob <= 1
         assert 0 <= away_prob <= 1
@@ -180,5 +180,5 @@ class TestRankCentralityModel:
         rankings_df = trained_rank_centrality_model.get_rankings_df()
 
         assert isinstance(rankings_df, pd.DataFrame)
-        assert 'team' in rankings_df.columns
-        assert 'rank_centrality' in rankings_df.columns
+        assert "team" in rankings_df.columns
+        assert "rank_centrality" in rankings_df.columns

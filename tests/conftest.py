@@ -14,7 +14,7 @@ def sample_games_df():
     rng = np.random.default_rng(42)
     n_games = 100
 
-    teams = ['Team_A', 'Team_B', 'Team_C', 'Team_D', 'Team_E']
+    teams = ["Team_A", "Team_B", "Team_C", "Team_D", "Team_E"]
 
     games = []
     base_date = datetime(2023, 1, 1)
@@ -23,15 +23,17 @@ def sample_games_df():
         home_team = rng.choice(teams)
         away_team = rng.choice([t for t in teams if t != home_team])
 
-        games.append({
-            'game_id': f'game_{i}',
-            'home_team': home_team,
-            'away_team': away_team,
-            'commence_time': base_date + timedelta(days=i),
-            'home_won': rng.choice([True, False]),
-            'home_avg_odds': rng.choice([-200, -150, -110, 100, 150, 200]),
-            'away_avg_odds': rng.choice([-200, -150, -110, 100, 150, 200]),
-        })
+        games.append(
+            {
+                "game_id": f"game_{i}",
+                "home_team": home_team,
+                "away_team": away_team,
+                "commence_time": base_date + timedelta(days=i),
+                "home_won": rng.choice([True, False]),
+                "home_avg_odds": rng.choice([-200, -150, -110, 100, 150, 200]),
+                "away_avg_odds": rng.choice([-200, -150, -110, 100, 150, 200]),
+            }
+        )
 
     return pd.DataFrame(games)
 
@@ -42,22 +44,24 @@ def sample_odds_df():
     rng = np.random.default_rng(42)
 
     games = []
-    teams = ['Team_A', 'Team_B']
-    sportsbooks = ['DraftKings', 'FanDuel', 'BetMGM']
+    teams = ["Team_A", "Team_B"]
+    sportsbooks = ["DraftKings", "FanDuel", "BetMGM"]
 
     for i in range(10):
-        game_id = f'game_{i}'
+        game_id = f"game_{i}"
         for team in teams:
             for sportsbook in sportsbooks:
-                games.append({
-                    'game_id': game_id,
-                    'home_team': teams[0],
-                    'away_team': teams[1],
-                    'team': team,
-                    'sportsbook': sportsbook,
-                    'odds': rng.choice([-200, -150, -110, 100, 150, 200]),
-                    'commence_time': datetime(2023, 1, 1) + timedelta(days=i),
-                })
+                games.append(
+                    {
+                        "game_id": game_id,
+                        "home_team": teams[0],
+                        "away_team": teams[1],
+                        "team": team,
+                        "sportsbook": sportsbook,
+                        "odds": rng.choice([-200, -150, -110, 100, 150, 200]),
+                        "commence_time": datetime(2023, 1, 1) + timedelta(days=i),
+                    }
+                )
 
     return pd.DataFrame(games)
 
@@ -80,10 +84,10 @@ def sample_actuals():
 def sample_roi_results():
     """Create sample ROI results for testing."""
     return {
-        'ELO': {'roi': 5.0, 'profit': 500, 'total_bet': 10000, 'num_bets': 100},
-        'XGBoost': {'roi': 3.0, 'profit': 300, 'total_bet': 10000, 'num_bets': 100},
-        'Random Forest': {'roi': 4.0, 'profit': 400, 'total_bet': 10000, 'num_bets': 100},
-        'Rank Centrality': {'roi': -2.0, 'profit': -200, 'total_bet': 10000, 'num_bets': 100},
+        "ELO": {"roi": 5.0, "profit": 500, "total_bet": 10000, "num_bets": 100},
+        "XGBoost": {"roi": 3.0, "profit": 300, "total_bet": 10000, "num_bets": 100},
+        "Random Forest": {"roi": 4.0, "profit": 400, "total_bet": 10000, "num_bets": 100},
+        "Rank Centrality": {"roi": -2.0, "profit": -200, "total_bet": 10000, "num_bets": 100},
     }
 
 

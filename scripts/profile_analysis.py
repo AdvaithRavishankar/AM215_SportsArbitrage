@@ -17,7 +17,9 @@ sys.path.insert(0, str(SRC))
 import run  # type: ignore  # noqa: E402
 
 
-def profile_run(output: str = "profile_stats.prof", sort: str = "cumulative", limit: int = 50) -> str:
+def profile_run(
+    output: str = "profile_stats.prof", sort: str = "cumulative", limit: int = 50
+) -> str:
     """Run cProfile on run.main and return a printable stats summary.
 
     Args:
