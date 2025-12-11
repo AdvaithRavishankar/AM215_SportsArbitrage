@@ -34,7 +34,7 @@ from sports_arbitrage.utils import (
     calculate_kelly_roi,
     calculate_markowitz_roi,
     find_arbitrage_opportunities,
-    american_to_probability
+    american_to_probability,
 )
 
 from sports_arbitrage.plotting import (
@@ -48,20 +48,22 @@ from sports_arbitrage.plotting import (
     plot_strategy_roi_comparison,
     plot_strategy_profit_comparison,
     plot_strategy_bet_frequency,
-    plot_strategy_best_strategy_counts
+    plot_strategy_best_strategy_counts,
 )
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
 # Random seed for reproducibility
 RANDOM_SEED = 42
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = PROJECT_ROOT / 'data'
-RESULTS_DIR = PROJECT_ROOT / 'results'
-FIGURES_DIR = RESULTS_DIR / 'figures'
+DATA_DIR = PROJECT_ROOT / "data"
+RESULTS_DIR = PROJECT_ROOT / "results"
+FIGURES_DIR = RESULTS_DIR / "figures"
 
 
-def simulate_game_results(games_df: pd.DataFrame, rng: Optional[np.random.Generator] = None) -> pd.DataFrame:
+def simulate_game_results(
+    games_df: pd.DataFrame, rng: Optional[np.random.Generator] = None
+) -> pd.DataFrame:
     """
     Simulate game results based on average odds.
     In production, you would use actual game results.
@@ -77,20 +79,20 @@ def simulate_game_results(games_df: pd.DataFrame, rng: Optional[np.random.Genera
     rng = rng or np.random.default_rng()
 
     # Use average odds to determine implied probability
-    if 'home_avg_odds' in df.columns and 'away_avg_odds' in df.columns:
-        df['home_implied_prob'] = df['home_avg_odds'].apply(
+    if "home_avg_odds" in df.columns and "away_avg_odds" in df.columns:
+        df["home_implied_prob"] = df["home_avg_odds"].apply(
             lambda x: american_to_probability(x) if pd.notna(x) else 0.5
         )
 
         # Add some randomness to make it realistic
-        df['home_true_prob'] = df['home_implied_prob'] + rng.normal(0, 0.05, len(df))
-        df['home_true_prob'] = df['home_true_prob'].clip(0.1, 0.9)
+        df["home_true_prob"] = df["home_implied_prob"] + rng.normal(0, 0.05, len(df))
+        df["home_true_prob"] = df["home_true_prob"].clip(0.1, 0.9)
 
         # Simulate results
-        df['home_won'] = rng.random(len(df)) < df['home_true_prob']
+        df["home_won"] = rng.random(len(df)) < df["home_true_prob"]
     else:
         # If no odds, use 50/50
-        df['home_won'] = rng.random(len(df)) < 0.5
+        df["home_won"] = rng.random(len(df)) < 0.5
 
     return df
 
@@ -117,7 +119,7 @@ def main():
     print("-" * 80)
 
     # Load odds data
-    odds_file = DATA_DIR / 'odds_2020_2024_combined.csv'
+    odds_file = DATA_DIR / "odds_2020_2024_combined.csv"
     if not odds_file.exists():
         print(f"ERROR: {odds_file} not found!")
         print("Please ensure the data file exists in the data/ directory.")
@@ -132,53 +134,59 @@ def main():
     print(f"   Prepared {len(games_df):,} unique games")
 
     # Load actual game results
-    results_file = DATA_DIR / 'nfl_games_with_stats.csv'
+    results_file = DATA_DIR / "nfl_games_with_stats.csv"
     if results_file.exists():
         print(f"   Loading actual game results from {results_file}...")
-        results_df = pd.read_csv(results_file, parse_dates=['commence_time'])
+        results_df = pd.read_csv(results_file, parse_dates=["commence_time"])
 
         # Create home_won column from scores
-        results_df['home_won'] = (results_df['home_score'] > results_df['away_score']).astype(int)
+        results_df["home_won"] = (results_df["home_score"] > results_df["away_score"]).astype(int)
 
         # Create matching key based on full team names and date
         # Use home_team_full and away_team_full to match with odds file
-        results_df['match_key'] = (
-            results_df['home_team_full'] + '_' +
-            results_df['away_team_full'] + '_' +
-            results_df['commence_time'].dt.strftime('%Y-%m-%d')
+        results_df["match_key"] = (
+            results_df["home_team_full"]
+            + "_"
+            + results_df["away_team_full"]
+            + "_"
+            + results_df["commence_time"].dt.strftime("%Y-%m-%d")
         )
 
         # Keep only necessary columns and drop duplicates
-        results_df = results_df[['match_key', 'home_won']].drop_duplicates(subset=['match_key'])
+        results_df = results_df[["match_key", "home_won"]].drop_duplicates(subset=["match_key"])
 
         # Create matching key in games_df
-        games_df['match_key'] = (
-            games_df['home_team'] + '_' +
-            games_df['away_team'] + '_' +
-            games_df['commence_time'].dt.strftime('%Y-%m-%d')
+        games_df["match_key"] = (
+            games_df["home_team"]
+            + "_"
+            + games_df["away_team"]
+            + "_"
+            + games_df["commence_time"].dt.strftime("%Y-%m-%d")
         )
 
         # Merge results
-        games_df = games_df.merge(results_df, on='match_key', how='left')
-        games_df = games_df.drop(columns=['match_key'])
+        games_df = games_df.merge(results_df, on="match_key", how="left")
+        games_df = games_df.drop(columns=["match_key"])
 
-        matched_games = games_df['home_won'].notna().sum()
+        matched_games = games_df["home_won"].notna().sum()
         print(f"   Matched actual results for {matched_games:,} games")
 
         # Filter out games without actual results to ensure reproducibility
-        unmatched_count = games_df['home_won'].isna().sum()
+        unmatched_count = games_df["home_won"].isna().sum()
         if unmatched_count > 0:
-            print(f"   Filtering out {unmatched_count:,} games without actual results (likely future games)...")
-            games_df = games_df[games_df['home_won'].notna()].copy()
+            print(
+                f"   Filtering out {unmatched_count:,} games without actual results (likely future games)..."
+            )
+            games_df = games_df[games_df["home_won"].notna()].copy()
             print(f"   Using {len(games_df):,} games with actual historical results")
 
         # Ensure home_won is boolean type (not float)
-        games_df['home_won'] = games_df['home_won'].astype(bool)
+        games_df["home_won"] = games_df["home_won"].astype(bool)
     else:
         # Fallback to simulation if results file not found
         print(f"   WARNING: {results_file} not found, simulating results...")
         games_df = simulate_game_results(games_df, rng=rng)
-        games_df['home_won'] = games_df['home_won'].astype(bool)
+        games_df["home_won"] = games_df["home_won"].astype(bool)
     print()
 
     # =========================================================================
@@ -188,7 +196,7 @@ def main():
     print("-" * 80)
 
     # Sort by date
-    games_df = games_df.sort_values('commence_time').reset_index(drop=True)
+    games_df = games_df.sort_values("commence_time").reset_index(drop=True)
 
     # Split: first 80% for CV, last 20% for final test
     split_idx = int(len(games_df) * 0.8)
@@ -219,10 +227,10 @@ def main():
     print("-" * 80)
 
     models = {
-        'ELO': ELOModel(k_factor=20, initial_rating=1500, home_advantage=50),
-        'Rank Centrality': RankCentralityModel(method='pagerank', damping_factor=0.85),
-        'XGBoost': XGBoostModel(n_estimators=100, max_depth=6, learning_rate=0.1),
-        'Random Forest': RandomForestModel(n_estimators=100, max_depth=10)
+        "ELO": ELOModel(k_factor=20, initial_rating=1500, home_advantage=50),
+        "Rank Centrality": RankCentralityModel(method="pagerank", damping_factor=0.85),
+        "XGBoost": XGBoostModel(n_estimators=100, max_depth=6, learning_rate=0.1),
+        "Random Forest": RandomForestModel(n_estimators=100, max_depth=10),
     }
 
     cv_results = []
@@ -243,17 +251,13 @@ def main():
 
             # Predict
             predictions = model.predict(val_df)
-            actuals = val_df['home_won'].values.astype(int)
+            actuals = val_df["home_won"].values.astype(int)
 
             # Calculate metrics
             metrics = calculate_metrics(actuals, predictions)
 
             # Store results
-            cv_results.append({
-                'model': model_name,
-                'fold': fold_idx + 1,
-                **metrics
-            })
+            cv_results.append({"model": model_name, "fold": fold_idx + 1, **metrics})
 
             # Store predictions for final analysis
             all_predictions[model_name].extend(predictions)
@@ -261,14 +265,16 @@ def main():
             print(f"Accuracy: {metrics['accuracy']:.3f}, Log Loss: {metrics['log_loss']:.3f}")
 
         # Store actuals once per fold
-        all_actuals.extend(val_df['home_won'].values.astype(int))
+        all_actuals.extend(val_df["home_won"].values.astype(int))
 
     # Convert to DataFrame
     cv_results_df = pd.DataFrame(cv_results)
 
     print("\n   Cross-Validation Results Summary:")
     print("   " + "=" * 40)
-    summary = cv_results_df.groupby('model')[['accuracy', 'log_loss', 'brier_score', 'roc_auc']].mean()
+    summary = cv_results_df.groupby("model")[
+        ["accuracy", "log_loss", "brier_score", "roc_auc"]
+    ].mean()
     print(summary.to_string())
     print()
 
@@ -288,20 +294,19 @@ def main():
 
         # Predict on test set
         predictions = model.predict(test_data)
-        actuals = test_data['home_won'].values.astype(int)
+        actuals = test_data["home_won"].values.astype(int)
 
         # Calculate metrics
         metrics = calculate_metrics(actuals, predictions)
 
-        test_results.append({
-            'model': model_name,
-            **metrics
-        })
+        test_results.append({"model": model_name, **metrics})
 
         test_predictions[model_name] = predictions
 
-        print(f"   {model_name:20s} - Accuracy: {metrics['accuracy']:.3f}, "
-              f"Log Loss: {metrics['log_loss']:.3f}, ROC AUC: {metrics['roc_auc']:.3f}")
+        print(
+            f"   {model_name:20s} - Accuracy: {metrics['accuracy']:.3f}, "
+            f"Log Loss: {metrics['log_loss']:.3f}, ROC AUC: {metrics['roc_auc']:.3f}"
+        )
 
     test_results_df = pd.DataFrame(test_results)
     print()
@@ -316,18 +321,20 @@ def main():
 
     for model_name in models.keys():
         predictions = test_predictions[model_name]
-        actuals = test_data['home_won'].values.astype(int)
+        actuals = test_data["home_won"].values.astype(int)
 
         # Use home team odds for ROI calculation
-        if 'home_avg_odds' in test_data.columns:
-            odds = test_data['home_avg_odds'].fillna(-110).values
+        if "home_avg_odds" in test_data.columns:
+            odds = test_data["home_avg_odds"].fillna(-110).values
 
             roi_metrics = calculate_roi(predictions, odds, actuals, bet_amount=100)
             roi_results[model_name] = roi_metrics
 
-            print(f"   {model_name:20s} - ROI: {roi_metrics['roi']:>7.2f}%, "
-                  f"Profit: ${roi_metrics['profit']:>8.2f}, "
-                  f"Bets: {int(roi_metrics['num_bets'])}")
+            print(
+                f"   {model_name:20s} - ROI: {roi_metrics['roi']:>7.2f}%, "
+                f"Profit: ${roi_metrics['profit']:>8.2f}, "
+                f"Bets: {int(roi_metrics['num_bets'])}"
+            )
 
     print()
 
@@ -341,23 +348,21 @@ def main():
 
     for model_name in models.keys():
         predictions = test_predictions[model_name]
-        actuals = test_data['home_won'].values.astype(int)
+        actuals = test_data["home_won"].values.astype(int)
 
-        if 'home_avg_odds' in test_data.columns:
-            odds = test_data['home_avg_odds'].fillna(-110).values
+        if "home_avg_odds" in test_data.columns:
+            odds = test_data["home_avg_odds"].fillna(-110).values
 
             kelly_metrics = calculate_kelly_roi(
-                predictions,
-                odds,
-                actuals,
-                bankroll=10000,
-                fraction=0.25
+                predictions, odds, actuals, bankroll=10000, fraction=0.25
             )
             kelly_roi_results[model_name] = kelly_metrics
 
-            print(f"   {model_name:20s} - ROI: {kelly_metrics['roi']:>7.2f}%, "
-                  f"Profit: ${kelly_metrics['profit']:>8.2f}, "
-                  f"Bets: {int(kelly_metrics['num_bets'])}")
+            print(
+                f"   {model_name:20s} - ROI: {kelly_metrics['roi']:>7.2f}%, "
+                f"Profit: ${kelly_metrics['profit']:>8.2f}, "
+                f"Bets: {int(kelly_metrics['num_bets'])}"
+            )
 
     print()
 
@@ -371,11 +376,11 @@ def main():
 
     for model_name in models.keys():
         predictions = test_predictions[model_name]
-        actuals = test_data['home_won'].values.astype(int)
-        dates = test_data['commence_time'].dt.date.values
+        actuals = test_data["home_won"].values.astype(int)
+        dates = test_data["commence_time"].dt.date.values
 
-        if 'home_avg_odds' in test_data.columns:
-            odds = test_data['home_avg_odds'].fillna(-110).values
+        if "home_avg_odds" in test_data.columns:
+            odds = test_data["home_avg_odds"].fillna(-110).values
 
             markowitz_metrics = calculate_markowitz_roi(
                 predictions,
@@ -384,25 +389,29 @@ def main():
                 dates,
                 bankroll=10000,
                 risk_aversion=2.0,
-                max_position=0.3
+                max_position=0.3,
             )
             markowitz_roi_results[model_name] = markowitz_metrics
 
-            print(f"   {model_name:20s} - ROI: {markowitz_metrics['roi']:>7.2f}%, "
-                  f"Profit: ${markowitz_metrics['profit']:>8.2f}, "
-                  f"Bets: {int(markowitz_metrics['num_bets'])}")
+            print(
+                f"   {model_name:20s} - ROI: {markowitz_metrics['roi']:>7.2f}%, "
+                f"Profit: ${markowitz_metrics['profit']:>8.2f}, "
+                f"Bets: {int(markowitz_metrics['num_bets'])}"
+            )
 
     print()
 
     # Print comparison
     print("Strategy Comparison: Fixed vs Kelly vs Markowitz")
     print("-" * 100)
-    print(f"{'Model':<20} {'Fixed ROI':>12} {'Kelly ROI':>12} {'Markowitz ROI':>15} {'Best Strategy':>20}")
+    print(
+        f"{'Model':<20} {'Fixed ROI':>12} {'Kelly ROI':>12} {'Markowitz ROI':>15} {'Best Strategy':>20}"
+    )
     print("-" * 100)
     for model_name in models.keys():
-        fixed_roi = roi_results[model_name]['roi']
-        kelly_roi = kelly_roi_results[model_name]['roi']
-        mark_roi = markowitz_roi_results[model_name]['roi']
+        fixed_roi = roi_results[model_name]["roi"]
+        kelly_roi = kelly_roi_results[model_name]["roi"]
+        mark_roi = markowitz_roi_results[model_name]["roi"]
 
         # Determine best strategy
         best_roi = max(fixed_roi, kelly_roi, mark_roi)
@@ -413,7 +422,9 @@ def main():
         else:
             best = "Markowitz"
 
-        print(f"{model_name:<20} {fixed_roi:>11.2f}% {kelly_roi:>11.2f}% {mark_roi:>14.2f}% {best:>20}")
+        print(
+            f"{model_name:<20} {fixed_roi:>11.2f}% {kelly_roi:>11.2f}% {mark_roi:>14.2f}% {best:>20}"
+        )
     print()
 
     # =========================================================================
@@ -423,8 +434,8 @@ def main():
     print("-" * 80)
 
     # Find arbitrage in test set
-    test_game_ids = test_data['game_id'].unique()
-    test_odds = odds_df[odds_df['game_id'].isin(test_game_ids)]
+    test_game_ids = test_data["game_id"].unique()
+    test_odds = odds_df[odds_df["game_id"].isin(test_game_ids)]
 
     arb_opportunities = find_arbitrage_opportunities(test_odds, min_roi=0.01)
 
@@ -436,14 +447,18 @@ def main():
 
         print("\n   Top 5 Arbitrage Opportunities:")
         print("   " + "=" * 78)
-        top_5 = arb_opportunities.nlargest(5, 'arbitrage_roi')
+        top_5 = arb_opportunities.nlargest(5, "arbitrage_roi")
 
         for idx, row in top_5.iterrows():
             print(f"   {row['away_team']} @ {row['home_team']}")
-            print(f"      Home: {row['home_sportsbook']} ({row['home_odds']:+.0f}) - "
-                  f"Stake: {row['home_stake_pct']:.1f}%")
-            print(f"      Away: {row['away_sportsbook']} ({row['away_odds']:+.0f}) - "
-                  f"Stake: {row['away_stake_pct']:.1f}%")
+            print(
+                f"      Home: {row['home_sportsbook']} ({row['home_odds']:+.0f}) - "
+                f"Stake: {row['home_stake_pct']:.1f}%"
+            )
+            print(
+                f"      Away: {row['away_sportsbook']} ({row['away_odds']:+.0f}) - "
+                f"Stake: {row['away_stake_pct']:.1f}%"
+            )
             print(f"      ROI: {row['arbitrage_roi']:.2f}%")
             print()
 
@@ -455,10 +470,16 @@ def main():
 
     # Model comparison
     print("   Creating model comparison plots...")
-    plot_model_comparison(cv_results_df, metric='accuracy',
-                         save_path=str(FIGURES_DIR / 'model_comparison_accuracy.png'))
-    plot_model_comparison(cv_results_df, metric='log_loss',
-                         save_path=str(FIGURES_DIR / 'model_comparison_logloss.png'))
+    plot_model_comparison(
+        cv_results_df,
+        metric="accuracy",
+        save_path=str(FIGURES_DIR / "model_comparison_accuracy.png"),
+    )
+    plot_model_comparison(
+        cv_results_df,
+        metric="log_loss",
+        save_path=str(FIGURES_DIR / "model_comparison_logloss.png"),
+    )
 
     # ROI comparison
     if roi_results:
@@ -467,42 +488,48 @@ def main():
             roi_results,
             kelly_roi_results,
             markowitz_roi_results,
-            save_path=str(FIGURES_DIR / 'roi_comparison.png')
+            save_path=str(FIGURES_DIR / "roi_comparison.png"),
         )
 
     # Prediction distributions
     print("   Creating prediction distribution plots...")
-    plot_prediction_distribution(test_predictions,
-                                save_path=str(FIGURES_DIR / 'prediction_distributions.png'))
+    plot_prediction_distribution(
+        test_predictions, save_path=str(FIGURES_DIR / "prediction_distributions.png")
+    )
 
     # Feature importance for tree-based models
     print("   Creating feature importance plots...")
     for model_name, model in models.items():
-        if hasattr(model, 'get_feature_importance'):
+        if hasattr(model, "get_feature_importance"):
             importance_df = model.get_feature_importance()
-            plot_feature_importance(importance_df, model_name=model_name,
-                                   save_path=str(FIGURES_DIR / f"feature_importance_{model_name.replace(' ', '_').lower()}.png"))
+            plot_feature_importance(
+                importance_df,
+                model_name=model_name,
+                save_path=str(
+                    FIGURES_DIR / f"feature_importance_{model_name.replace(' ', '_').lower()}.png"
+                ),
+            )
 
     # Calibration curves
     print("   Creating calibration curves...")
     for model_name, preds in test_predictions.items():
         plot_calibration_curve(
-            test_data['home_won'].values.astype(int),
+            test_data["home_won"].values.astype(int),
             preds,
             model_name=model_name,
-            save_path=str(FIGURES_DIR / f"calibration_{model_name.replace(' ', '_').lower()}.png")
+            save_path=str(FIGURES_DIR / f"calibration_{model_name.replace(' ', '_').lower()}.png"),
         )
 
     # Arbitrage opportunities
     if len(arb_opportunities) > 0:
         print("   Creating arbitrage opportunities plot...")
-        plot_arbitrage_opportunities(arb_opportunities,
-                                    save_path=str(FIGURES_DIR / 'arbitrage_opportunities.png'))
+        plot_arbitrage_opportunities(
+            arb_opportunities, save_path=str(FIGURES_DIR / "arbitrage_opportunities.png")
+        )
 
     # Metrics heatmap
     print("   Creating metrics heatmap...")
-    plot_metrics_heatmap(cv_results_df,
-                        save_path=str(FIGURES_DIR / 'metrics_heatmap.png'))
+    plot_metrics_heatmap(cv_results_df, save_path=str(FIGURES_DIR / "metrics_heatmap.png"))
 
     # Strategy comparison
     if roi_results and kelly_roi_results and markowitz_roi_results:
@@ -511,25 +538,25 @@ def main():
             roi_results,
             kelly_roi_results,
             markowitz_roi_results,
-            save_path=str(FIGURES_DIR / 'strategy_roi_comparison.png')
+            save_path=str(FIGURES_DIR / "strategy_roi_comparison.png"),
         )
         plot_strategy_profit_comparison(
             roi_results,
             kelly_roi_results,
             markowitz_roi_results,
-            save_path=str(FIGURES_DIR / 'strategy_profit_comparison.png')
+            save_path=str(FIGURES_DIR / "strategy_profit_comparison.png"),
         )
         plot_strategy_bet_frequency(
             roi_results,
             kelly_roi_results,
             markowitz_roi_results,
-            save_path=str(FIGURES_DIR / 'strategy_bet_frequency.png')
+            save_path=str(FIGURES_DIR / "strategy_bet_frequency.png"),
         )
         plot_strategy_best_strategy_counts(
             roi_results,
             kelly_roi_results,
             markowitz_roi_results,
-            save_path=str(FIGURES_DIR / 'strategy_best_strategy_counts.png')
+            save_path=str(FIGURES_DIR / "strategy_best_strategy_counts.png"),
         )
 
     print()
@@ -541,22 +568,22 @@ def main():
     print("-" * 80)
 
     # Save CV results
-    cv_results_df.to_csv(RESULTS_DIR / 'cv_results.csv', index=False)
+    cv_results_df.to_csv(RESULTS_DIR / "cv_results.csv", index=False)
     print("   Saved cross-validation results to results/cv_results.csv")
 
     # Save test results
-    test_results_df.to_csv(RESULTS_DIR / 'test_results.csv', index=False)
+    test_results_df.to_csv(RESULTS_DIR / "test_results.csv", index=False)
     print("   Saved test results to results/test_results.csv")
 
     # Save ROI results
     if roi_results:
         roi_df = pd.DataFrame(roi_results).T
-        roi_df.to_csv(RESULTS_DIR / 'roi_results.csv')
+        roi_df.to_csv(RESULTS_DIR / "roi_results.csv")
         print("   Saved ROI results to results/roi_results.csv")
 
     # Save arbitrage opportunities
     if len(arb_opportunities) > 0:
-        arb_opportunities.to_csv(RESULTS_DIR / 'arbitrage_opportunities.csv', index=False)
+        arb_opportunities.to_csv(RESULTS_DIR / "arbitrage_opportunities.csv", index=False)
         print("   Saved arbitrage opportunities to results/arbitrage_opportunities.csv")
 
     print()
@@ -569,11 +596,15 @@ def main():
     print("=" * 80)
     print()
     print("Summary:")
-    print(f"   Best model (Accuracy): {test_results_df.loc[test_results_df['accuracy'].idxmax(), 'model']}")
-    print(f"   Best model (ROC AUC): {test_results_df.loc[test_results_df['roc_auc'].idxmax(), 'model']}")
+    print(
+        f"   Best model (Accuracy): {test_results_df.loc[test_results_df['accuracy'].idxmax(), 'model']}"
+    )
+    print(
+        f"   Best model (ROC AUC): {test_results_df.loc[test_results_df['roc_auc'].idxmax(), 'model']}"
+    )
 
     if roi_results:
-        best_roi_model = max(roi_results.items(), key=lambda x: x[1]['roi'])[0]
+        best_roi_model = max(roi_results.items(), key=lambda x: x[1]["roi"])[0]
         print(f"   Best model (ROI): {best_roi_model} ({roi_results[best_roi_model]['roi']:.2f}%)")
 
     print()

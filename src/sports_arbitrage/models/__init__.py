@@ -7,4 +7,4 @@ from .rank_centrality import RankCentralityModel
 from .xgboost_model import XGBoostModel
 from .random_forest import RandomForestModel
 
-__all__ = ['ELOModel', 'RankCentralityModel', 'XGBoostModel', 'RandomForestModel']
+__all__ = ["ELOModel", "RankCentralityModel", "XGBoostModel", "RandomForestModel"]

@@ -21,8 +21,9 @@ class ELOModel:
         ratings (Dict[str, float]): Current ELO ratings for each team
     """
 
-    def __init__(self, k_factor: float = 20, initial_rating: float = 1500,
-                 home_advantage: float = 50):
+    def __init__(
+        self, k_factor: float = 20, initial_rating: float = 1500, home_advantage: float = 50
+    ):
         """
         Initialize ELO model.
 
@@ -113,11 +114,7 @@ class ELOModel:
             games_df: DataFrame with columns ['home_team', 'away_team', 'home_won']
         """
         for _, game in games_df.iterrows():
-            self.update_ratings(
-                game['home_team'],
-                game['away_team'],
-                game['home_won']
-            )
+            self.update_ratings(game["home_team"], game["away_team"], game["home_won"])
 
     def predict(self, games_df: pd.DataFrame) -> np.ndarray:
         """
@@ -131,7 +128,7 @@ class ELOModel:
         """
         predictions = []
         for _, game in games_df.iterrows():
-            home_prob, _ = self.predict_game(game['home_team'], game['away_team'])
+            home_prob, _ = self.predict_game(game["home_team"], game["away_team"])
             predictions.append(home_prob)
         return np.array(predictions)
 
@@ -142,11 +139,12 @@ class ELOModel:
         Returns:
             DataFrame with team names and their ELO ratings
         """
-        return pd.DataFrame([
-            {'team': team, 'elo_rating': rating}
-            for team, rating in sorted(self.ratings.items(),
-                                      key=lambda x: x[1], reverse=True)
-        ])
+        return pd.DataFrame(
+            [
+                {"team": team, "elo_rating": rating}
+                for team, rating in sorted(self.ratings.items(), key=lambda x: x[1], reverse=True)
+            ]
+        )
 
     def reset(self):
         """Reset all ratings to initial values."""
