@@ -41,7 +41,13 @@ def american_to_probability(odds: float) -> float:
 
     Returns:
         Implied probability (0 to 1)
+
+    Raises:
+        ValueError: If odds are invalid (e.g., between -100 and 100 exclusive, or 0)
     """
+    if odds == 0:
+        raise ValueError(f"Invalid American odds: {odds}. Odds cannot be zero")
+
     if odds < 0:
         return abs(odds) / (abs(odds) + 100)
     else:
@@ -57,7 +63,13 @@ def probability_to_american(prob: float) -> float:
 
     Returns:
         American odds
+
+    Raises:
+        ValueError: If probability is not in valid range (0, 1)
     """
+    if not (0 < prob < 1):
+        raise ValueError(f"Invalid probability: {prob}. Must be between 0 and 1 (exclusive)")
+
     if prob >= 0.5:
         return -100 * prob / (1 - prob)
     else:
@@ -80,28 +92,20 @@ def prepare_games_data(odds_df: pd.DataFrame) -> pd.DataFrame:
     # Get average odds per team per game
     avg_odds = odds_df.groupby(['game_id', 'team'])['odds'].mean().reset_index()
 
-    # Pivot to get home and away odds
-    games_with_odds = games.copy()
-    games_with_odds['home_avg_odds'] = games_with_odds.apply(
-        lambda row: avg_odds[
-            (avg_odds['game_id'] == row['game_id']) &
-            (avg_odds['team'] == row['home_team'])
-        ]['odds'].values[0] if len(avg_odds[
-            (avg_odds['game_id'] == row['game_id']) &
-            (avg_odds['team'] == row['home_team'])
-        ]) > 0 else None,
-        axis=1
+    # Merge home team odds
+    home_odds = avg_odds.rename(columns={'team': 'home_team', 'odds': 'home_avg_odds'})
+    games_with_odds = games.merge(
+        home_odds[['game_id', 'home_team', 'home_avg_odds']],
+        on=['game_id', 'home_team'],
+        how='left'
     )
 
-    games_with_odds['away_avg_odds'] = games_with_odds.apply(
-        lambda row: avg_odds[
-            (avg_odds['game_id'] == row['game_id']) &
-            (avg_odds['team'] == row['away_team'])
-        ]['odds'].values[0] if len(avg_odds[
-            (avg_odds['game_id'] == row['game_id']) &
-            (avg_odds['team'] == row['away_team'])
-        ]) > 0 else None,
-        axis=1
+    # Merge away team odds
+    away_odds = avg_odds.rename(columns={'team': 'away_team', 'odds': 'away_avg_odds'})
+    games_with_odds = games_with_odds.merge(
+        away_odds[['game_id', 'away_team', 'away_avg_odds']],
+        on=['game_id', 'away_team'],
+        how='left'
     )
 
     return games_with_odds
@@ -161,7 +165,7 @@ def create_rolling_windows(df: pd.DataFrame, n_folds: int = 3) -> List[Tuple[pd.
 
     folds = []
     for i in range(n_folds):
-        train_end = (i + 1) * fold_size + fold_size // 2
+        train_end = (i + 1) * fold_size
         test_start = train_end
         test_end = test_start + fold_size
 
@@ -314,13 +318,24 @@ def calculate_kelly_criterion(win_prob: float, odds: float,
     Calculate optimal bet size using Kelly Criterion.
 
     Args:
-        win_prob: Probability of winning
+        win_prob: Probability of winning (0 to 1)
         odds: American odds
         fraction: Fraction of Kelly to use (0.25 = quarter Kelly)
 
     Returns:
         Optimal bet size as fraction of bankroll
+
+    Raises:
+        ValueError: If win_prob not in (0, 1), odds invalid, or fraction not in (0, 1]
     """
+    # Validate inputs
+    if not (0 < win_prob < 1):
+        raise ValueError(f"Invalid win probability: {win_prob}. Must be between 0 and 1")
+    if odds == 0:
+        raise ValueError(f"Invalid American odds: {odds}. Odds cannot be zero")
+    if not (0 < fraction <= 1):
+        raise ValueError(f"Invalid Kelly fraction: {fraction}. Must be between 0 and 1")
+
     # Convert American odds to decimal
     if odds < 0:
         decimal_odds = 1 + (100 / abs(odds))
@@ -411,7 +426,7 @@ def optimize_markowitz_portfolio(expected_returns: np.ndarray,
     Optimize portfolio weights using mean-variance framework.
 
     Maximizes: w^T μ - risk_aversion × w^T Σ w
-    Subject to: w_i ≥ 0, w_i ≤ max_position, Σw_i ≤ 1
+    Subject to: w_i ≥ 0, w_i ≤ max_position, Σw_i = 1
 
     Args:
         expected_returns: Expected return for each game
@@ -421,16 +436,32 @@ def optimize_markowitz_portfolio(expected_returns: np.ndarray,
 
     Returns:
         Optimal portfolio weights
+
+    Raises:
+        ValueError: If inputs have invalid shapes or values
     """
+    # Validate inputs
+    if not isinstance(expected_returns, np.ndarray) or not isinstance(covariance_matrix, np.ndarray):
+        raise ValueError("expected_returns and covariance_matrix must be numpy arrays")
+
     n = len(expected_returns)
+
+    if n == 0:
+        raise ValueError("expected_returns cannot be empty")
+    if covariance_matrix.shape != (n, n):
+        raise ValueError(f"covariance_matrix shape {covariance_matrix.shape} must match expected_returns length {n}")
+    if risk_aversion <= 0:
+        raise ValueError(f"risk_aversion must be positive, got {risk_aversion}")
+    if not (0 < max_position <= 1):
+        raise ValueError(f"max_position must be in (0, 1], got {max_position}")
 
     # Objective: maximize risk-adjusted return
     def objective(w):
         return -(w @ expected_returns - risk_aversion * w @ covariance_matrix @ w)
 
-    # Constraints
+    # Constraints: sum of weights must equal 1 (fully invest bankroll)
     constraints = [
-        {'type': 'ineq', 'fun': lambda w: 1 - np.sum(w)}  # Don't exceed bankroll
+        {'type': 'eq', 'fun': lambda w: np.sum(w) - 1}
     ]
 
     # Bounds: 0 <= w_i <= max_position

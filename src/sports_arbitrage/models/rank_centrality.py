@@ -62,17 +62,17 @@ class RankCentralityModel:
             if away_team not in self.graph:
                 self.graph.add_node(away_team)
 
-            # Add edges: winner -> loser
+            # Add edges: loser -> winner (standard PageRank: winners receive in-edges)
             if home_won:
-                if self.graph.has_edge(home_team, away_team):
-                    self.graph[home_team][away_team]['weight'] += 1
-                else:
-                    self.graph.add_edge(home_team, away_team, weight=1)
-            else:
                 if self.graph.has_edge(away_team, home_team):
                     self.graph[away_team][home_team]['weight'] += 1
                 else:
                     self.graph.add_edge(away_team, home_team, weight=1)
+            else:
+                if self.graph.has_edge(home_team, away_team):
+                    self.graph[home_team][away_team]['weight'] += 1
+                else:
+                    self.graph.add_edge(home_team, away_team, weight=1)
 
     def _calculate_centrality(self) -> Dict[str, float]:
         """
@@ -108,13 +108,13 @@ class RankCentralityModel:
                 raise ValueError(f"Unknown method: {self.method}")
 
         except (nx.PowerIterationFailedConvergence, nx.NetworkXError):
-            # Fallback: use win rate
+            # Fallback: use win rate (in-degree = wins)
             centrality = {}
             for node in self.graph.nodes():
                 in_degree = self.graph.in_degree(node, weight='weight')
                 out_degree = self.graph.out_degree(node, weight='weight')
                 total = in_degree + out_degree
-                centrality[node] = out_degree / total if total > 0 else 0.5
+                centrality[node] = in_degree / total if total > 0 else 0.5
 
         return centrality
 

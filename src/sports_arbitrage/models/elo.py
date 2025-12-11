@@ -88,10 +88,9 @@ class ELOModel:
         home_rating = self._get_rating(home_team)
         away_rating = self._get_rating(away_team)
 
-        # Calculate expected scores (without home advantage for update)
-        home_expected = self._expected_score(
-            home_rating + self.home_advantage, away_rating
-        )
+        # Calculate expected scores with home advantage for accurate expectations
+        home_rating_with_advantage = home_rating + self.home_advantage
+        home_expected = self._expected_score(home_rating_with_advantage, away_rating)
         away_expected = 1 - home_expected
 
         # Actual scores

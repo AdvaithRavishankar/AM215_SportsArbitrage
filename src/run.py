@@ -449,8 +449,12 @@ def main():
     # ROI comparison
     if roi_results:
         print("   Creating ROI comparison plot...")
-        plot_roi_comparison(roi_results,
-                           save_path='../results/figures/roi_comparison.png')
+        plot_roi_comparison(
+            fixed_roi_results=roi_results,
+            kelly_roi_results=kelly_roi_results,
+            markowitz_roi_results=markowitz_roi_results,
+            save_path='../results/figures/roi_comparison.png'
+        )
 
     # Prediction distributions
     print("   Creating prediction distribution plots...")

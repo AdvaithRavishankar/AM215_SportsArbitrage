@@ -8,7 +8,7 @@ for structured data and can capture complex non-linear relationships.
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 
 class XGBoostModel:
@@ -108,15 +108,19 @@ class XGBoostModel:
             'away_win_rate': 0.5, 'total_games': 0
         })
 
+        # Extract temporal features from game date
+        game_time = pd.to_datetime(row['commence_time'])
+
         features = [
             home_stats['win_rate'],
             away_stats['win_rate'],
             home_stats['home_win_rate'],
             away_stats['away_win_rate'],
-            home_stats['win_rate'] - away_stats['win_rate'],  # Win rate difference
-            home_stats['home_win_rate'] - away_stats['away_win_rate'],  # H/A diff
             home_stats['total_games'],
             away_stats['total_games'],
+            game_time.year,           # Year (captures roster changes)
+            game_time.month,          # Month (early vs late season)
+            game_time.dayofweek,      # Day of week (rest patterns, 0=Monday, 6=Sunday)
         ]
 
         return np.array(features)
@@ -143,8 +147,8 @@ class XGBoostModel:
         self.feature_names = [
             'home_win_rate', 'away_win_rate',
             'home_home_win_rate', 'away_away_win_rate',
-            'win_rate_diff', 'home_away_diff',
-            'home_total_games', 'away_total_games'
+            'home_total_games', 'away_total_games',
+            'year', 'month', 'day_of_week'
         ]
 
         # Train model
@@ -169,7 +173,7 @@ class XGBoostModel:
         probabilities = self.model.predict_proba(X)[:, 1]
         return probabilities
 
-    def predict_game(self, home_team: str, away_team: str) -> tuple:
+    def predict_game(self, home_team: str, away_team: str) -> Tuple[float, float]:
         """
         Predict win probabilities for a single game.
 

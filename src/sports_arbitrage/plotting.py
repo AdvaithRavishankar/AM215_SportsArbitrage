@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Dict, List, Optional
 from matplotlib.figure import Figure
+from matplotlib.patches import Patch
 
 
 # Professional color palette (colorblind-friendly - Paul Tol scheme)
@@ -20,6 +21,13 @@ MODEL_COLORS = {
 
 PROFIT_COLOR = '#228833'  # Green
 LOSS_COLOR = '#EE6677'    # Red
+
+# Strategy colors for ROI comparison
+STRATEGY_COLORS = {
+    'Fixed': '#1f77b4',      # Blue
+    'Kelly': '#ff7f0e',      # Orange
+    'Markowitz': '#2ca02c'   # Green
+}
 
 # Global matplotlib configuration
 plt.style.use('seaborn-v0_8-darkgrid')
@@ -108,50 +116,95 @@ def plot_model_comparison(results_df: pd.DataFrame, metric: str = 'accuracy',
     return fig
 
 
-def plot_roi_comparison(roi_results: Dict[str, Dict], save_path: Optional[str] = None) -> Figure:
+def plot_roi_comparison(
+    fixed_roi_results: Dict[str, Dict],
+    kelly_roi_results: Dict[str, Dict],
+    markowitz_roi_results: Dict[str, Dict],
+    save_path: Optional[str] = None
+) -> Figure:
     """
-    Plot ROI comparison across models.
+    Plot ROI comparison across models showing best strategy for each model.
 
     Args:
-        roi_results: Dict mapping model names to ROI metrics
+        fixed_roi_results: Dict mapping model names to Fixed strategy ROI metrics
+        kelly_roi_results: Dict mapping model names to Kelly strategy ROI metrics
+        markowitz_roi_results: Dict mapping model names to Markowitz strategy ROI metrics
         save_path: Optional path to save figure
 
     Returns:
         Matplotlib figure
     """
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
 
-    models = list(roi_results.keys())
-    roi_values = [roi_results[model]['roi'] for model in models]
-    profit_values = [roi_results[model]['profit'] for model in models]
+    # Determine best strategy for each model
+    models = list(fixed_roi_results.keys())
+    best_roi_values = []
+    best_profit_values = []
+    best_strategies = []
+
+    for model in models:
+        # Get ROI from all three strategies
+        strategies = {
+            'Fixed': fixed_roi_results[model],
+            'Kelly': kelly_roi_results[model],
+            'Markowitz': markowitz_roi_results[model]
+        }
+
+        # Find strategy with highest ROI
+        best_strategy = max(strategies.keys(), key=lambda s: strategies[s]['roi'])
+
+        best_roi_values.append(strategies[best_strategy]['roi'])
+        best_profit_values.append(strategies[best_strategy]['profit'])
+        best_strategies.append(best_strategy)
+
+    # Color bars by strategy
+    colors = [STRATEGY_COLORS[strategy] for strategy in best_strategies]
 
     # ROI bar plot
-    colors = [PROFIT_COLOR if roi > 0 else LOSS_COLOR for roi in roi_values]
-    ax1.bar(models, roi_values, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
+    ax1.bar(models, best_roi_values, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
     ax1.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
     ax1.set_xlabel('Model', fontsize=12)
     ax1.set_ylabel('ROI (%)', fontsize=12)
-    ax1.set_title('Return on Investment by Model', fontsize=14, fontweight='bold')
+    ax1.set_title('Best ROI by Model (Best Strategy)', fontsize=14, fontweight='bold')
     ax1.grid(axis='y', alpha=0.3)
 
-    # Add value labels
-    for i, (model, roi) in enumerate(zip(models, roi_values)):
-        ax1.text(i, roi + (1 if roi > 0 else -1), f'{roi:.2f}%',
-                ha='center', va='bottom' if roi > 0 else 'top', fontsize=10)
+    # Add ROI value labels INSIDE bars
+    for i, (model, roi, strategy) in enumerate(zip(models, best_roi_values, best_strategies)):
+        # Place label inside bar (centered vertically within the bar)
+        ax1.text(i, roi / 2, f'{roi:.2f}%',
+                ha='center', va='center', fontsize=10, fontweight='bold', color='white')
+
+    # Add strategy labels below x-axis
+    for i, (model, strategy) in enumerate(zip(models, best_strategies)):
+        ax1.text(i, min(best_roi_values) - abs(max(best_roi_values) - min(best_roi_values)) * 0.1,
+                strategy, ha='center', va='top', fontsize=9, style='italic')
+
+    # Add legend
+    legend_elements = [
+        Patch(facecolor=STRATEGY_COLORS['Fixed'], label='Fixed ($100/bet)'),
+        Patch(facecolor=STRATEGY_COLORS['Kelly'], label='Kelly Criterion (0.25)'),
+        Patch(facecolor=STRATEGY_COLORS['Markowitz'], label='Markowitz Portfolio')
+    ]
+    ax1.legend(handles=legend_elements, loc='best', fontsize=10)
 
     # Profit bar plot
-    colors = [PROFIT_COLOR if profit > 0 else LOSS_COLOR for profit in profit_values]
-    ax2.bar(models, profit_values, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
+    ax2.bar(models, best_profit_values, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
     ax2.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
     ax2.set_xlabel('Model', fontsize=12)
     ax2.set_ylabel('Profit ($)', fontsize=12)
-    ax2.set_title('Total Profit by Model', fontsize=14, fontweight='bold')
+    ax2.set_title('Best Profit by Model (Best Strategy)', fontsize=14, fontweight='bold')
     ax2.grid(axis='y', alpha=0.3)
 
-    # Add value labels
-    for i, (model, profit) in enumerate(zip(models, profit_values)):
-        ax2.text(i, profit + (50 if profit > 0 else -50), f'${profit:.2f}',
-                ha='center', va='bottom' if profit > 0 else 'top', fontsize=10)
+    # Add profit value labels INSIDE bars
+    for i, (model, profit, strategy) in enumerate(zip(models, best_profit_values, best_strategies)):
+        # Place label inside bar (centered vertically within the bar)
+        ax2.text(i, profit / 2, f'${profit:.2f}',
+                ha='center', va='center', fontsize=10, fontweight='bold', color='white')
+
+    # Add strategy labels below x-axis
+    for i, (model, strategy) in enumerate(zip(models, best_strategies)):
+        ax2.text(i, min(best_profit_values) - abs(max(best_profit_values) - min(best_profit_values)) * 0.1,
+                strategy, ha='center', va='top', fontsize=9, style='italic')
 
     plt.tight_layout()
 
