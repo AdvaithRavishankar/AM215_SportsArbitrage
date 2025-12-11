@@ -29,6 +29,8 @@ from sports_arbitrage.utils import (
     create_rolling_windows,
     calculate_metrics,
     calculate_roi,
+    calculate_kelly_roi,
+    calculate_markowitz_roi,
     find_arbitrage_opportunities,
     american_to_probability
 )
@@ -40,7 +42,11 @@ from sports_arbitrage.plotting import (
     plot_feature_importance,
     plot_prediction_distribution,
     plot_arbitrage_opportunities,
-    plot_metrics_heatmap
+    plot_metrics_heatmap,
+    plot_strategy_roi_comparison,
+    plot_strategy_profit_comparison,
+    plot_strategy_bet_frequency,
+    plot_strategy_best_strategy_counts
 )
 
 warnings.filterwarnings('ignore')
@@ -111,9 +117,54 @@ def main():
     games_df = prepare_games_data(odds_df)
     print(f"   Prepared {len(games_df):,} unique games")
 
-    # Simulate game results (in production, use actual results)
-    games_df = simulate_game_results(games_df)
-    print(f"   Simulated game results")
+    # Load actual game results
+    results_file = '../data/nfl_games_with_stats.csv'
+    if os.path.exists(results_file):
+        print(f"   Loading actual game results from {results_file}...")
+        results_df = pd.read_csv(results_file, parse_dates=['commence_time'])
+
+        # Create home_won column from scores
+        results_df['home_won'] = (results_df['home_score'] > results_df['away_score']).astype(int)
+
+        # Create matching key based on full team names and date
+        # Use home_team_full and away_team_full to match with odds file
+        results_df['match_key'] = (
+            results_df['home_team_full'] + '_' +
+            results_df['away_team_full'] + '_' +
+            results_df['commence_time'].dt.strftime('%Y-%m-%d')
+        )
+
+        # Keep only necessary columns and drop duplicates
+        results_df = results_df[['match_key', 'home_won']].drop_duplicates(subset=['match_key'])
+
+        # Create matching key in games_df
+        games_df['match_key'] = (
+            games_df['home_team'] + '_' +
+            games_df['away_team'] + '_' +
+            games_df['commence_time'].dt.strftime('%Y-%m-%d')
+        )
+
+        # Merge results
+        games_df = games_df.merge(results_df, on='match_key', how='left')
+        games_df = games_df.drop(columns=['match_key'])
+
+        matched_games = games_df['home_won'].notna().sum()
+        print(f"   Matched actual results for {matched_games:,} games")
+
+        # Filter out games without actual results to ensure reproducibility
+        unmatched_count = games_df['home_won'].isna().sum()
+        if unmatched_count > 0:
+            print(f"   Filtering out {unmatched_count:,} games without actual results (likely future games)...")
+            games_df = games_df[games_df['home_won'].notna()].copy()
+            print(f"   Using {len(games_df):,} games with actual historical results")
+
+        # Ensure home_won is boolean type (not float)
+        games_df['home_won'] = games_df['home_won'].astype(bool)
+    else:
+        # Fallback to simulation if results file not found
+        print(f"   WARNING: {results_file} not found, simulating results...")
+        games_df = simulate_game_results(games_df)
+        games_df['home_won'] = games_df['home_won'].astype(bool)
     print()
 
     # =========================================================================
@@ -267,6 +318,91 @@ def main():
     print()
 
     # =========================================================================
+    # 6a. CALCULATE KELLY CRITERION ROI
+    # =========================================================================
+    print("6a. Calculating Kelly Criterion ROI...")
+    print("-" * 80)
+
+    kelly_roi_results = {}
+
+    for model_name in models.keys():
+        predictions = test_predictions[model_name]
+        actuals = test_data['home_won'].values.astype(int)
+
+        if 'home_avg_odds' in test_data.columns:
+            odds = test_data['home_avg_odds'].fillna(-110).values
+
+            kelly_metrics = calculate_kelly_roi(
+                predictions,
+                odds,
+                actuals,
+                bankroll=10000,
+                fraction=0.25
+            )
+            kelly_roi_results[model_name] = kelly_metrics
+
+            print(f"   {model_name:20s} - ROI: {kelly_metrics['roi']:>7.2f}%, "
+                  f"Profit: ${kelly_metrics['profit']:>8.2f}, "
+                  f"Bets: {int(kelly_metrics['num_bets'])}")
+
+    print()
+
+    # =========================================================================
+    # 6b. CALCULATE MARKOWITZ PORTFOLIO STRATEGY ROI
+    # =========================================================================
+    print("6b. Calculating Markowitz Portfolio ROI...")
+    print("-" * 80)
+
+    markowitz_roi_results = {}
+
+    for model_name in models.keys():
+        predictions = test_predictions[model_name]
+        actuals = test_data['home_won'].values.astype(int)
+        dates = test_data['commence_time'].dt.date.values
+
+        if 'home_avg_odds' in test_data.columns:
+            odds = test_data['home_avg_odds'].fillna(-110).values
+
+            markowitz_metrics = calculate_markowitz_roi(
+                predictions,
+                odds,
+                actuals,
+                dates,
+                bankroll=10000,
+                risk_aversion=2.0,
+                max_position=0.3
+            )
+            markowitz_roi_results[model_name] = markowitz_metrics
+
+            print(f"   {model_name:20s} - ROI: {markowitz_metrics['roi']:>7.2f}%, "
+                  f"Profit: ${markowitz_metrics['profit']:>8.2f}, "
+                  f"Bets: {int(markowitz_metrics['num_bets'])}")
+
+    print()
+
+    # Print comparison
+    print("Strategy Comparison: Fixed vs Kelly vs Markowitz")
+    print("-" * 100)
+    print(f"{'Model':<20} {'Fixed ROI':>12} {'Kelly ROI':>12} {'Markowitz ROI':>15} {'Best Strategy':>20}")
+    print("-" * 100)
+    for model_name in models.keys():
+        fixed_roi = roi_results[model_name]['roi']
+        kelly_roi = kelly_roi_results[model_name]['roi']
+        mark_roi = markowitz_roi_results[model_name]['roi']
+
+        # Determine best strategy
+        best_roi = max(fixed_roi, kelly_roi, mark_roi)
+        if best_roi == fixed_roi:
+            best = "Fixed"
+        elif best_roi == kelly_roi:
+            best = "Kelly"
+        else:
+            best = "Markowitz"
+
+        print(f"{model_name:<20} {fixed_roi:>11.2f}% {kelly_roi:>11.2f}% {mark_roi:>14.2f}% {best:>20}")
+    print()
+
+    # =========================================================================
     # 7. FIND ARBITRAGE OPPORTUNITIES
     # =========================================================================
     print("7. Finding arbitrage opportunities...")
@@ -349,6 +485,34 @@ def main():
     print("   Creating metrics heatmap...")
     plot_metrics_heatmap(cv_results_df,
                         save_path='../results/figures/metrics_heatmap.png')
+
+    # Strategy comparison
+    if roi_results and kelly_roi_results and markowitz_roi_results:
+        print("   Creating strategy comparison plots...")
+        plot_strategy_roi_comparison(
+            roi_results,
+            kelly_roi_results,
+            markowitz_roi_results,
+            save_path='../results/figures/strategy_roi_comparison.png'
+        )
+        plot_strategy_profit_comparison(
+            roi_results,
+            kelly_roi_results,
+            markowitz_roi_results,
+            save_path='../results/figures/strategy_profit_comparison.png'
+        )
+        plot_strategy_bet_frequency(
+            roi_results,
+            kelly_roi_results,
+            markowitz_roi_results,
+            save_path='../results/figures/strategy_bet_frequency.png'
+        )
+        plot_strategy_best_strategy_counts(
+            roi_results,
+            kelly_roi_results,
+            markowitz_roi_results,
+            save_path='../results/figures/strategy_best_strategy_counts.png'
+        )
 
     print()
 

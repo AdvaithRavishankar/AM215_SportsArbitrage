@@ -1,7 +1,5 @@
 game_id,home_team,away_team,home_sportsbook,home_odds,away_sportsbook,away_odds,arbitrage_roi,home_stake_pct,away_stake_pct
-1bccaf2a9388f9d02f8f0c23cbc6b121,New England Patriots,Los Angeles Chargers,betonlineag,260,fanduel,-255,0.39277297721915794,27.88688138256088,72.11311861743911
 4ede93bcf0120eff85ceba01144694b9,Miami Dolphins,Buffalo Bills,wynnbet,138,fanduel,104,9.846153846153838,46.15384615384615,53.84615384615385
 77184e40f6e14084fd2c378c157640b8,Baltimore Ravens,Pittsburgh Steelers,draftkings,-205,williamhill_us,270,6.111894687353092,71.32110954395863,28.678890456041373
-8297b863d5f355bd3127adf93cf196a7,Los Angeles Rams,Arizona Cardinals,draftkings,-162,lowvig,260,11.594888783719814,69.00141978230005,30.99858021769995
 aa15f18a1c3124af14045b32185ff166,Cincinnati Bengals,Denver Broncos,fanduel,-144,betus,164,3.204306588054351,60.90745962573699,39.09254037426301
 b782886bcc4874123d3bb50e5d1e88c3,Minnesota Vikings,New York Jets,draftkings,102,williamhill_us,122,5.764150943396218,52.35849056603773,47.64150943396226

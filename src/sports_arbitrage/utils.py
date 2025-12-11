@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from typing import Dict, List, Tuple, Optional
 from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, brier_score_loss
+from scipy.optimize import minimize
 
 
 def load_odds_data(filepath: str) -> pd.DataFrame:
@@ -338,6 +339,290 @@ def calculate_kelly_criterion(win_prob: float, odds: float,
     kelly = max(0, kelly * fraction)
 
     return kelly
+
+
+def estimate_game_variance(win_prob: float, odds: float) -> float:
+    """
+    Calculate variance of return for single game bet.
+
+    Args:
+        win_prob: Probability of winning (0 to 1)
+        odds: American odds
+
+    Returns:
+        Variance of return
+    """
+    # Convert odds to payout ratio
+    if odds < 0:
+        payout = 100 / abs(odds)
+    else:
+        payout = odds / 100
+
+    # Expected return
+    expected_return = win_prob * payout - (1 - win_prob) * 1
+
+    # Variance: E[X²] - E[X]²
+    expected_return_squared = (
+        win_prob * (payout ** 2) +
+        (1 - win_prob) * ((-1) ** 2)
+    )
+    variance = expected_return_squared - (expected_return ** 2)
+
+    return variance
+
+
+def calculate_portfolio_metrics(predictions: np.ndarray,
+                                  odds: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Calculate expected returns and variances for portfolio optimization.
+
+    Args:
+        predictions: Predicted win probabilities for each game
+        odds: American odds for each game
+
+    Returns:
+        Tuple of (expected_returns, variances)
+    """
+    n_games = len(predictions)
+    expected_returns = np.zeros(n_games)
+    variances = np.zeros(n_games)
+
+    for i in range(n_games):
+        # Payout ratio
+        if odds[i] < 0:
+            payout = 100 / abs(odds[i])
+        else:
+            payout = odds[i] / 100
+
+        # Expected return
+        expected_returns[i] = predictions[i] * payout - (1 - predictions[i])
+
+        # Variance
+        variances[i] = estimate_game_variance(predictions[i], odds[i])
+
+    return expected_returns, variances
+
+
+def optimize_markowitz_portfolio(expected_returns: np.ndarray,
+                                   covariance_matrix: np.ndarray,
+                                   risk_aversion: float = 2.0,
+                                   max_position: float = 0.3) -> np.ndarray:
+    """
+    Optimize portfolio weights using mean-variance framework.
+
+    Maximizes: w^T μ - risk_aversion × w^T Σ w
+    Subject to: w_i ≥ 0, w_i ≤ max_position, Σw_i ≤ 1
+
+    Args:
+        expected_returns: Expected return for each game
+        covariance_matrix: Covariance matrix of returns
+        risk_aversion: Risk aversion coefficient (higher = more conservative)
+        max_position: Maximum fraction of bankroll for single bet
+
+    Returns:
+        Optimal portfolio weights
+    """
+    n = len(expected_returns)
+
+    # Objective: maximize risk-adjusted return
+    def objective(w):
+        return -(w @ expected_returns - risk_aversion * w @ covariance_matrix @ w)
+
+    # Constraints
+    constraints = [
+        {'type': 'ineq', 'fun': lambda w: 1 - np.sum(w)}  # Don't exceed bankroll
+    ]
+
+    # Bounds: 0 <= w_i <= max_position
+    bounds = [(0, max_position) for _ in range(n)]
+
+    # Initial guess
+    w0 = np.ones(n) / n
+
+    # Optimize
+    result = minimize(
+        objective,
+        w0,
+        method='SLSQP',
+        bounds=bounds,
+        constraints=constraints,
+        options={'ftol': 1e-9, 'maxiter': 1000}
+    )
+
+    if result.success:
+        return result.x
+    else:
+        print(f"Optimization warning: {result.message}")
+        return np.ones(n) / n  # Fallback to equal weights
+
+
+def calculate_markowitz_roi(predictions: np.ndarray,
+                             odds: np.ndarray,
+                             actual_wins: np.ndarray,
+                             dates: np.ndarray,
+                             bankroll: float = 10000,
+                             risk_aversion: float = 2.0,
+                             max_position: float = 0.3) -> Dict[str, float]:
+    """
+    Calculate ROI using Markowitz portfolio optimization strategy.
+
+    Groups games by date and optimizes bet allocation within each date.
+
+    Args:
+        predictions: Predicted win probabilities
+        odds: American odds
+        actual_wins: Actual outcomes (1 if won, 0 if lost)
+        dates: Date for each game (for grouping)
+        bankroll: Starting bankroll
+        risk_aversion: Risk aversion parameter
+        max_position: Maximum fraction per single bet
+
+    Returns:
+        Dictionary with ROI metrics
+    """
+    current_bankroll = bankroll
+    total_bet = 0
+    total_return = 0
+    num_bets = 0
+
+    # Group by date
+    unique_dates = np.unique(dates)
+
+    for date in unique_dates:
+        date_mask = dates == date
+        date_preds = predictions[date_mask]
+        date_odds = odds[date_mask]
+        date_wins = actual_wins[date_mask]
+
+        # Filter games with edge (prediction > implied probability + 5%)
+        edges = []
+        for i, (pred, odd) in enumerate(zip(date_preds, date_odds)):
+            # Convert odds to implied probability
+            if odd < 0:
+                implied_prob = abs(odd) / (abs(odd) + 100)
+            else:
+                implied_prob = 100 / (odd + 100)
+
+            if pred > implied_prob + 0.05:  # Require 5% edge
+                edges.append(i)
+
+        if len(edges) == 0:
+            continue
+
+        # Subset to games with edge
+        edge_preds = date_preds[edges]
+        edge_odds = date_odds[edges]
+        edge_wins = date_wins[edges]
+
+        # Calculate portfolio metrics
+        exp_returns, variances = calculate_portfolio_metrics(edge_preds, edge_odds)
+
+        # Covariance matrix (diagonal - assume independent games)
+        cov_matrix = np.diag(variances)
+
+        # Optimize weights
+        weights = optimize_markowitz_portfolio(
+            exp_returns,
+            cov_matrix,
+            risk_aversion=risk_aversion,
+            max_position=max_position
+        )
+
+        # Place bets
+        for i, (weight, odd, won) in enumerate(zip(weights, edge_odds, edge_wins)):
+            bet_amount = weight * current_bankroll
+
+            if bet_amount < 1:  # Minimum bet $1
+                continue
+
+            total_bet += bet_amount
+            num_bets += 1
+
+            if won:
+                # Calculate profit
+                if odd < 0:
+                    profit = bet_amount * (100 / abs(odd))
+                else:
+                    profit = bet_amount * (odd / 100)
+
+                payout = bet_amount + profit
+                total_return += payout
+                current_bankroll += profit
+            else:
+                # Lost bet
+                current_bankroll -= bet_amount
+
+    roi = ((total_return - total_bet) / total_bet * 100) if total_bet > 0 else 0
+    profit = total_return - total_bet
+
+    return {
+        'total_bet': total_bet,
+        'total_return': total_return,
+        'profit': profit,
+        'roi': roi,
+        'num_bets': num_bets,
+        'final_bankroll': current_bankroll
+    }
+
+
+def calculate_kelly_roi(predictions: np.ndarray,
+                        odds: np.ndarray,
+                        actual_wins: np.ndarray,
+                        bankroll: float = 10000,
+                        fraction: float = 0.25) -> Dict[str, float]:
+    """
+    Calculate ROI using Kelly Criterion betting strategy.
+
+    Args:
+        predictions: Predicted win probabilities
+        odds: American odds
+        actual_wins: Actual outcomes (1 if won, 0 if lost)
+        bankroll: Starting bankroll
+        fraction: Fraction of Kelly to use (0.25 = quarter Kelly)
+
+    Returns:
+        Dictionary with ROI metrics
+    """
+    current_bankroll = bankroll
+    total_bet = 0
+    total_return = 0
+    num_bets = 0
+
+    for pred, odd, won in zip(predictions, odds, actual_wins):
+        # Calculate Kelly bet size
+        kelly_fraction = calculate_kelly_criterion(pred, odd, fraction=fraction)
+        bet_amount = kelly_fraction * current_bankroll
+
+        # Only bet if Kelly suggests betting and minimum bet met
+        if bet_amount >= 1:
+            total_bet += bet_amount
+            num_bets += 1
+
+            if won:
+                # Calculate profit
+                if odd < 0:
+                    profit = bet_amount * (100 / abs(odd))
+                else:
+                    profit = bet_amount * (odd / 100)
+
+                payout = bet_amount + profit
+                total_return += payout
+                current_bankroll += profit
+            else:
+                # Lost bet
+                current_bankroll -= bet_amount
+
+    roi = ((total_return - total_bet) / total_bet * 100) if total_bet > 0 else 0
+    profit = total_return - total_bet
+
+    return {
+        'total_bet': total_bet,
+        'total_return': total_return,
+        'profit': profit,
+        'roi': roi,
+        'num_bets': num_bets,
+        'final_bankroll': current_bankroll
+    }
 
 
 def combine_model_predictions(predictions_dict: Dict[str, np.ndarray],
