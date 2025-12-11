@@ -210,7 +210,9 @@ def plot_roi_comparison(
     ax2.grid(axis="y", alpha=0.3)
 
     # Add profit value labels INSIDE bars
-    for i, (_model, profit, _strategy) in enumerate(zip(models, best_profit_values, best_strategies)):
+    for i, (_model, profit, _strategy) in enumerate(
+        zip(models, best_profit_values, best_strategies)
+    ):
         # Place label inside bar (centered vertically within the bar)
         ax2.text(
             i,
