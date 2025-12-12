@@ -1,31 +1,64 @@
 # Sports Betting Arbitrage Analysis
 
+![CI](https://github.com/AdvaithRavishankar/AM215_SportsArbitrage/actions/workflows/python-app.yml/badge.svg)
+![Docs](https://github.com/AdvaithRavishankar/AM215_SportsArbitrage/actions/workflows/docs.yml/badge.svg)
+
 A comprehensive sports betting analysis and arbitrage system for NFL games using multiple prediction models and arbitrage detection.
 
 ## Project Overview
 
 This project extends our work from Project 1 on sports odds betting. We use multiple models to predict NFL game outcomes and identify arbitrage opportunities across different sportsbooks to maximize ROI while hedging risk.
 
-## Installation and Usage
-### Setup
+## Reproducible Setup
 
-1. Clone the repository:
-```bash
-cd AM215_SportsArbitrage
-```
+- **Python package deps:** managed in `pyproject.toml`.
+- **Pinned analysis env:** `environment.yml` (conda/mamba) for exact versions; alternatively `pip install -r requirements.txt`.
+- **Dev/test extras:** `pip install -e .[dev,test]` for linting, type checking, and tests.
+- **Determinism:** RNG is routed through `numpy.random.default_rng`; the active seed is logged at run start.
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-### Running the Analysis
+## Running the Analysis
 
-Simply run the main script from the src directory:
+From the repo root (paths are now robust to working directory):
 
 ```bash
-cd src
-python run.py
+python src/run.py
 ```
+
+Artifacts land in `results/` (figures, CSV metrics).
+
+## Docker
+
+Reproducible container build:
+```bash
+docker build -t sports-arbitrage .
+docker run --rm -v "$(pwd)/results:/app/results" sports-arbitrage
+```
+
+## Testing, Linting, Type Checking
+
+```bash
+pytest               # unit + integration tests
+ruff check src tests # lint
+black --check src tests
+mypy src/sports_arbitrage
+```
+CI runs these on `push`/`pull_request` to `main`/`develop`.
+
+## Documentation
+
+- Source: `docs/` (Sphinx).
+- Build locally: `sphinx-build -b html docs docs/_build/html`
+- CI workflow `docs.yml` builds docs and uploads an artifact; publish to GitHub Pages by enabling Pages to point at that artifact.
+
+## Performance & Profiling
+
+- Profiling artifact: `profiling/profile_summary.txt` (generated via `python scripts/profile_analysis.py --output profiling/profile_stats.prof --limit 30 --sort cumulative`).
+- Bottleneck: CPU-bound in `calculate_markowitz_roi` (SciPy SLSQP) and PNG writing. Concurrency not added because optimization is already CPU-bound per model and dataset is modest; parallelizing would add overhead for small fold counts.
+- For further gains, consider reducing Markowitz iterations or caching per-day optimization.
+
+## LLM Usage
+
+This repository was updated with assistance from an LLM (OpenAI ChatGPT/Codex) for refactoring, documentation, and tooling. All changes were reviewed and integrated manually.
 
 ### Key Features
 
@@ -65,6 +98,11 @@ AM215_SportsArbitrage/
 ├── requirements.txt              # Dependencies
 └── README.md                     # This file
 ```
+
+## Branching & Workflow
+
+- Use feature branches (`feat/*`, `fix/*`) and PRs into `main` with at least one reviewer.
+- Protect `main` in GitHub settings to require CI passes before merging.
 
 
 ## Models

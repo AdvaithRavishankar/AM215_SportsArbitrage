@@ -6,10 +6,11 @@ the outcomes of games played. It constructs a graph of teams and uses eigenvecto
 centrality or similar metrics to rank teams.
 """
 
+from typing import Dict, Tuple
+
+import networkx as nx
 import numpy as np
 import pandas as pd
-import networkx as nx
-from typing import Dict, Tuple
 
 
 class RankCentralityModel:
@@ -26,8 +27,9 @@ class RankCentralityModel:
         rankings (Dict[str, float]): Current team rankings
     """
 
-    def __init__(self, method: str = 'pagerank', damping_factor: float = 0.85,
-                 home_advantage: float = 0.05):
+    def __init__(
+        self, method: str = "pagerank", damping_factor: float = 0.85, home_advantage: float = 0.05
+    ):
         """
         Initialize Rank Centrality model.
 
@@ -52,9 +54,9 @@ class RankCentralityModel:
         self.graph.clear()
 
         for _, game in games_df.iterrows():
-            home_team = game['home_team']
-            away_team = game['away_team']
-            home_won = game['home_won']
+            home_team = game["home_team"]
+            away_team = game["away_team"]
+            home_won = game["home_won"]
 
             # Add nodes
             if home_team not in self.graph:
@@ -62,17 +64,17 @@ class RankCentralityModel:
             if away_team not in self.graph:
                 self.graph.add_node(away_team)
 
-            # Add edges: winner -> loser
+            # Add edges: loser -> winner (standard PageRank: winners receive in-edges)
             if home_won:
-                if self.graph.has_edge(home_team, away_team):
-                    self.graph[home_team][away_team]['weight'] += 1
-                else:
-                    self.graph.add_edge(home_team, away_team, weight=1)
-            else:
                 if self.graph.has_edge(away_team, home_team):
-                    self.graph[away_team][home_team]['weight'] += 1
+                    self.graph[away_team][home_team]["weight"] += 1
                 else:
                     self.graph.add_edge(away_team, home_team, weight=1)
+            else:
+                if self.graph.has_edge(home_team, away_team):
+                    self.graph[home_team][away_team]["weight"] += 1
+                else:
+                    self.graph.add_edge(home_team, away_team, weight=1)
 
     def _calculate_centrality(self) -> Dict[str, float]:
         """
@@ -85,36 +87,25 @@ class RankCentralityModel:
             return {}
 
         try:
-            if self.method == 'pagerank':
-                centrality = nx.pagerank(
-                    self.graph,
-                    alpha=self.damping_factor,
-                    weight='weight'
-                )
-            elif self.method == 'eigenvector':
-                centrality = nx.eigenvector_centrality(
-                    self.graph,
-                    weight='weight',
-                    max_iter=1000
-                )
-            elif self.method == 'katz':
+            if self.method == "pagerank":
+                centrality = nx.pagerank(self.graph, alpha=self.damping_factor, weight="weight")
+            elif self.method == "eigenvector":
+                centrality = nx.eigenvector_centrality(self.graph, weight="weight", max_iter=1000)
+            elif self.method == "katz":
                 centrality = nx.katz_centrality(
-                    self.graph,
-                    alpha=0.1,
-                    weight='weight',
-                    max_iter=1000
+                    self.graph, alpha=0.1, weight="weight", max_iter=1000
                 )
             else:
                 raise ValueError(f"Unknown method: {self.method}")
 
         except (nx.PowerIterationFailedConvergence, nx.NetworkXError):
-            # Fallback: use win rate
+            # Fallback: use win rate (in-degree = wins)
             centrality = {}
             for node in self.graph.nodes():
-                in_degree = self.graph.in_degree(node, weight='weight')
-                out_degree = self.graph.out_degree(node, weight='weight')
+                in_degree = self.graph.in_degree(node, weight="weight")
+                out_degree = self.graph.out_degree(node, weight="weight")
                 total = in_degree + out_degree
-                centrality[node] = out_degree / total if total > 0 else 0.5
+                centrality[node] = in_degree / total if total > 0 else 0.5
 
         return centrality
 
@@ -169,7 +160,7 @@ class RankCentralityModel:
         """
         predictions = []
         for _, game in games_df.iterrows():
-            home_prob, _ = self.predict_game(game['home_team'], game['away_team'])
+            home_prob, _ = self.predict_game(game["home_team"], game["away_team"])
             predictions.append(home_prob)
         return np.array(predictions)
 
@@ -180,11 +171,12 @@ class RankCentralityModel:
         Returns:
             DataFrame with team names and their centrality rankings
         """
-        return pd.DataFrame([
-            {'team': team, 'rank_centrality': rank}
-            for team, rank in sorted(self.rankings.items(),
-                                    key=lambda x: x[1], reverse=True)
-        ])
+        return pd.DataFrame(
+            [
+                {"team": team, "rank_centrality": rank}
+                for team, rank in sorted(self.rankings.items(), key=lambda x: x[1], reverse=True)
+            ]
+        )
 
     def reset(self):
         """Reset the model."""

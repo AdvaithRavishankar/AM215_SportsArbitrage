@@ -1,0 +1,45 @@
+# Byte-compiled / cache
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env/
+
+# OS / editor cruft
+.DS_Store
+.idea/
+.vscode/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# Logs and notebooks checkpoints
+*.log
+.ipynb_checkpoints/
+
+# Results and generated artifacts
+results/
+
+# Test, coverage, and cache artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+
+# Docs build artifacts
+docs/_build/
+
+# Profiling outputs
+*.prof
+*.pstats
